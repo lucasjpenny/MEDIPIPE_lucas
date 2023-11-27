@@ -1,6 +1,7 @@
 ################
 ## BWA alignment
 ################
+#test here
 rule bwa_map:
     input:
         #config["bwa_index"],
@@ -180,4 +181,4 @@ rule insert_size_spikein:
     shell:
         "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
-        "H={output.hist}) 2> {log}"
+        "H={output.hist})
