@@ -8,8 +8,7 @@ rule bwa_map:
         get_bwa_index(),
         get_trimmed_fastq
     output:
-        # temp("raw_bam/{sample}.bam")
-        "raw_bam/{sample}.bam"
+        temp("raw_bam/{sample}.bam")
     threads: 12
     log:
         "logs/{sample}_bwa_map.log"
@@ -27,7 +26,8 @@ rule samtools_sort_index_stats:
         #temp(bam = "raw_bam/{sample}_sorted.bam"), doesn't work
         #bai = "raw_bam/{sample}_sorted.bam.bai",
         #stat= "raw_bam/{sample}_sorted.bam.stats.txt"
-        temp("raw_bam/{sample}_sorted.bam"),
+        # temp("raw_bam/{sample}_sorted.bam"),
+        "raw_bam/{sample}_sorted.bam",
         "raw_bam/{sample}_sorted.bam.stats.txt"
     threads: 12
     shell:
@@ -102,7 +102,7 @@ rule samtools_umi_tools_pe:
         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
-rule samtools_umi_tools_pe:
+rule secondary_samtools_umi_pe:
     input:
         "raw_bam/{sample}_sorted.bam"
     output:
@@ -179,6 +179,22 @@ rule insert_size:
     output:
         txt = "fragment_size/{sample}_insert_size_metrics.txt",
         hist = "fragment_size/{sample}_insert_size_histogram.pdf"
+    params:
+        pipeline_env = env_dir
+    log:
+        "logs/{sample}_picard_insert_size.log"
+    shell:
+        "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
+        "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
+        "H={output.hist}) 2> {log}"
+
+rule insert_size_secondary:
+    input:
+        #"dedup_bam_pe/{sample}_dedup.bam"
+        get_secondary_dedup_bam
+    output:
+        txt = "fragment_size_secondary/{sample}_insert_size_metrics.txt",
+        hist = "fragment_size_secondary/{sample}_insert_size_histogram.pdf"
     params:
         pipeline_env = env_dir
     log:

@@ -58,7 +58,8 @@ def get_rule_all_input():
     meth_out = expand("meth_qc_quant/{samples}_count.txt", samples = SAMPLES["sample_id"]),
     frag_size = expand("fragment_size/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
     fp_gc = expand("fragment_profile/{samples}_50_Granges.bed", samples = SAMPLES["sample_id"]),
-    return  fq_qc + frag_size 
+    frag_size_secondary = expand("fragment_size_secondary/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
+    return  fq_qc + frag_size + frag_size_secondary
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
