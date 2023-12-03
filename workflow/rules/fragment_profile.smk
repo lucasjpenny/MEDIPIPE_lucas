@@ -15,8 +15,6 @@ rule fragment_profile:
         scr_dir = config["pipe_dir"],   ## filter regions enclosed in assets folder are needed
     log:
         "logs/{sample}_fragment_profile.log"
-    conda:
-        "extra_env/R.yaml"
     shell:
-        "(Rscript --vanilla {params.scr_dir}/workflow/scripts/fragment_profile.R "
+        "(Rscript --vanilla {params.scr_dir}/scripts/fragment_profile.R "
         "{wildcards.sample} {input} {params.bsgenome} {params.scr_dir}) 2> {log}"

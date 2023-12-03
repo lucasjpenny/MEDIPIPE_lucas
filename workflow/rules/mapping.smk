@@ -8,7 +8,8 @@ rule bwa_map:
         get_bwa_index(),
         get_trimmed_fastq
     output:
-        temp("raw_bam/{sample}.bam")
+        # temp("raw_bam/{sample}.bam")
+        "raw_bam/{sample}.bam"
     threads: 12
     log:
         "logs/{sample}_bwa_map.log"
@@ -88,16 +89,38 @@ rule samtools_umi_tools_pe:
         tmp_bam = "dedup_bam_umi_pe/{sample}_tmp.bam",
         stat_prefix = "dedup_bam_umi_pe/{sample}_dedup"
     threads: 12
-    conda:
-        "extra_env/umi_tools.yaml"
     log:
         "logs/{sample}_dedup_umi.log"
     shell:
         ## --umi-separator='_' by default, could also be ":"
         ## umi tools --method='unique', by default is 'directional'
         ##  -output-stats can slow down the processing and increase memory usage considerably
+        #I modifed this line to filter out unmapped reads for only the HPV16 genome
         "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
         "samtools view -b -f 2 -F 2828 --threads {threads} {params.tmp_bam} > {output.dedup_bam} && "
+        # "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
+        "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
+        "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
+
+rule samtools_umi_tools_pe:
+    input:
+        "raw_bam/{sample}_sorted.bam"
+    output:
+        dedup_bam = "dedup_secondary_bam_umi_pe/{sample}_dedup.bam",
+        bam_stat = "dedup_secondary_bam_umi_pe/{sample}_dedup.bam.stats.txt",
+    params:
+        tmp_bam = "dedup_secondary_bam_umi_pe/{sample}_tmp.bam",
+        stat_prefix = "dedup_secondary_bam_umi_pe/{sample}_dedup"
+    threads: 12
+    log:
+        "logs/{sample}_dedup_umi.log"
+    shell:
+        ## --umi-separator='_' by default, could also be ":"
+        ## umi tools --method='unique', by default is 'directional'
+        ##  -output-stats can slow down the processing and increase memory usage considerably
+        #I modifed this line to filter out unmapped reads for only the HPV16 genome
+        "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
+        "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
@@ -112,14 +135,13 @@ rule samtools_umi_tools_se:
         tmp_bam = "dedup_bam_umi_se/{sample}_tmp.bam",
         stat_prefix = "dedup_bam_umi_se/{sample}_dedup"
     threads: 12
-    conda:
-        "extra_env/umi_tools.yaml"
     log:
         "logs/{sample}_dedup_umi.log"
     shell:
         ## --umi-separator='_' by default, could also be ":"
         "(umi_tools dedup -I {input} -S {params.tmp_bam} --umi-separator=':' --output-stats={params.stat_prefix} && "
         "samtools view -b -F 2820 --threads {threads} {params.tmp_bam} > {output.dedup_bam} && "
+        # "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
@@ -128,23 +150,23 @@ rule samtools_umi_tools_se:
 ## extract spike-ins bam after deduplication
 ############################################
 ## paired-end only so far !!
-rule samtools_spikein_sort_index_stats:
-    input:
-        #"raw_bam/{sample}_sorted.bam"      ## lead to ambiguous wildcards!?
-        #"dedup_bam_pe/{sample}_dedup.bam"
-        get_dedup_bam
-    output:
-        bam = "dedup_bam_spikein/{sample}_spikein.bam",
-        stat= "dedup_bam_spikein/{sample}_spikein.bam.stats.txt"
-    threads: 12
-    params:
-        spikein_chr = config["spike_in_chr"]
-    shell:
-        ## --threads flag failed
-        "(samtools view  -@ {threads} -hbS {input} {params.spikein_chr} | "
-        "samtools  sort  -@ {threads} -o {output.bam} && "
-        "samtools  index -@ {threads} {output.bam} && "
-        "samtools  stats -@ {threads} {output.bam} > {output.stat})"
+# rule samtools_spikein_sort_index_stats:
+#     input:
+#         #"raw_bam/{sample}_sorted.bam"      ## lead to ambiguous wildcards!?
+#         #"dedup_bam_pe/{sample}_dedup.bam"
+#         get_dedup_bam
+#     output:
+#         bam = "dedup_bam_spikein/{sample}_spikein.bam",
+#         stat= "dedup_bam_spikein/{sample}_spikein.bam.stats.txt"
+#     threads: 12
+#     params:
+#         spikein_chr = config["spike_in_chr"]
+#     shell:
+#         ## --threads flag failed
+#         "(samtools view  -@ {threads} -hbS {input} {params.spikein_chr} | "
+#         "samtools  sort  -@ {threads} -o {output.bam} && "
+#         "samtools  index -@ {threads} {output.bam} && "
+#         "samtools  stats -@ {threads} {output.bam} > {output.stat})"
 
 
 ############################################
@@ -162,23 +184,23 @@ rule insert_size:
     log:
         "logs/{sample}_picard_insert_size.log"
     shell:
-        "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
+        "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
         "H={output.hist}) 2> {log}"
 
 
-## spike-ins
-rule insert_size_spikein:
-    input:
-        "dedup_bam_spikein/{sample}_spikein.bam"
-    output:
-        txt = "fragment_size_spikein/{sample}_insert_size_metrics.txt",
-        hist = "fragment_size_spikein/{sample}_insert_size_histogram.pdf"
-    params:
-        pipeline_env = env_dir
-    log:
-        "logs/{sample}_picard_insert_size_spikein.log"
-    shell:
-        "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
-        "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
-        "H={output.hist})
+# ## spike-ins
+# rule insert_size_spikein:
+#     input:
+#         "dedup_bam_spikein/{sample}_spikein.bam"
+#     output:
+#         txt = "fragment_size_spikein/{sample}_insert_size_metrics.txt",
+#         hist = "fragment_size_spikein/{sample}_insert_size_histogram.pdf"
+#     params:
+#         pipeline_env = env_dir
+#     log:
+#         "logs/{sample}_picard_insert_size_spikein.log"
+#     shell:
+#         "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
+#         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
+#         "H={output.hist}) 2> {log}"

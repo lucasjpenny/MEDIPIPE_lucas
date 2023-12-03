@@ -1,6 +1,8 @@
 ## This script was developed based on :
 ## https://github.com/cancer-genomics/delfi_scripts
 args = commandArgs(trailingOnly=TRUE)
+.libPaths(c("/usr/local/lib/R/site-library", .libPaths()))
+
 
 ## assigning commandArgs
 sample_id  = args[1]

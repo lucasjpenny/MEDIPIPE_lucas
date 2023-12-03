@@ -52,7 +52,14 @@ def get_rule_all_input():
     aggr_qc = "aggregated/aggr_qc_report.html",
     meta_quant = "aggregated/meth_count.txt.gz",
     meth_filt = "autos_bfilt/meth_count_autos_bfilt.txt.gz",
-
+    ####################
+    # DELETE THIS
+    fq_qc = expand("fastqc_pe/{samples}_R2_fastqc.zip", samples = SAMPLES["sample_id"]),
+    meth_out = expand("meth_qc_quant/{samples}_count.txt", samples = SAMPLES["sample_id"]),
+    frag_size = expand("fragment_size/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
+    fp_gc = expand("fragment_profile/{samples}_50_Granges.bed", samples = SAMPLES["sample_id"]),
+    return  fq_qc + frag_size 
+    ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
     ## paired-end and spike-in
@@ -122,7 +129,8 @@ def get_rule_all_input():
         meth_out = expand("meth_qc_quant/{samples}_count.txt", samples = SAMPLES["sample_id"]),
         frag_size = expand("fragment_size/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
 
-        return extra_env + fq_qc + frag_size + meth_out
+        # I removed meth_out from this function!! and extra_env +
+        return  fq_qc + frag_size 
 
     ## single-end
     elif config["aggregate"] == False and config["paired-end"] == False:
@@ -214,6 +222,16 @@ def get_dedup_bam(wildcards):
         return "dedup_bam_umi_pe/{}_dedup.bam".format(wildcards.sample)
     elif config["paired-end"] and config["add_umi"] == False:
         return "dedup_bam_pe/{}_dedup.bam".format(wildcards.sample)
+    elif config["paired-end"] == False and config["add_umi"]:
+        return "dedup_bam_umi_se/{}_dedup.bam".format(wildcards.sample)
+    else:
+        return "dedup_bam_se/{}_dedup.bam".format(wildcards.sample)
+
+def get_secondary_dedup_bam(wildcards):
+    if config["paired-end"] and config["add_umi"]:
+        return "dedup_secondary_bam_umi_pe/{}_dedup.bam".format(wildcards.sample)
+    elif config["paired-end"] and config["add_umi"] == False:
+        return "dedup_secondary_bam_umi_pe/{}_dedup.bam".format(wildcards.sample)
     elif config["paired-end"] == False and config["add_umi"]:
         return "dedup_bam_umi_se/{}_dedup.bam".format(wildcards.sample)
     else:

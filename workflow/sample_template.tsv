@@ -1,0 +1,3 @@
+sample_id	R1	R2
+OPC_Pool-1_1_S1	/cluster/projects/scottgroup/data/230504_A00827_0793_BHTY2LDSX5_Bratman_Tracy/OPC_Pool-1_1_S1_L001_R1_001.fastq.gz	/cluster/projects/scottgroup/data/230504_A00827_0793_BHTY2LDSX5_Bratman_Tracy/OPC_Pool-1_1_S1_L001_R2_001.fastq.gz
+OPC_Pool-1_2_S2	/cluster/projects/scottgroup/data/230504_A00827_0793_BHTY2LDSX5_Bratman_Tracy/OPC_Pool-1_2_S2_L001_R1_001.fastq.gz	/cluster/projects/scottgroup/data/230504_A00827_0793_BHTY2LDSX5_Bratman_Tracy/OPC_Pool-1_2_S2_L001_R2_001.fastq.gz

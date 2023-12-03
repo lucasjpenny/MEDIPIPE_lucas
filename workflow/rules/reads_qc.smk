@@ -76,8 +76,6 @@ rule umi_tools_extract_pe:
         temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
         temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
         "barcoded_fq_pe/{sample}_extract.log"
-    conda:
-        "extra_env/umi_tools.yaml"
     params:
         bcp = lambda wildcards: config["umi_pattern"]        ##  deactivate automatic wildcard expansion of {}
     shell:
@@ -92,8 +90,6 @@ rule umi_tools_extract_se:
     output:
         temp("barcoded_fq_se/{sample}.fastq.gz"),
         "barcoded_fq_se/{sample}_extract.log"
-    conda:
-        "extra_env/umi_tools.yaml"
     params:
         bcp = lambda wildcards: config["umi_pattern"]        ##  deactivate automatic wildcard expansion of {}
     shell:
