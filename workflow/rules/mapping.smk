@@ -14,6 +14,8 @@ rule bwa_map:
         "logs/{sample}_bwa_map.log"
     shell:
         "(bwa mem -M -t {threads}  {input} | "
+        "samtools view -b -f 4 - | samtools index - | samtools bam2fq - | "
+        "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
         "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
 
 ##########################################
@@ -120,7 +122,7 @@ rule secondary_samtools_umi_pe:
         ##  -output-stats can slow down the processing and increase memory usage considerably
         #I modifed this line to filter out unmapped reads for only the HPV16 genome
         "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
-        "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
+        "samtools view -b -f 257 -F 2572 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
@@ -198,7 +200,7 @@ rule insert_size_secondary:
     params:
         pipeline_env = env_dir
     log:
-        "logs/{sample}_picard_insert_size.log"
+        "logs/{sample}_picard_secondary_insert_size.log"
     shell:
         "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
