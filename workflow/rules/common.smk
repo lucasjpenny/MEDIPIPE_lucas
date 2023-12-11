@@ -36,6 +36,9 @@ else:
 REF = pd.read_csv(config["ref_files"], sep="\t", header = None, index_col = 0)
 blacklist = REF.loc["blacklist"][1]   ## ENCODE blacklist
 
+def get_blacklist():
+    return blacklist
+
 
 #############################################
 ## get taget outputs based on the config file

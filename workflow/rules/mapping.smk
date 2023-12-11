@@ -149,6 +149,40 @@ rule samtools_umi_tools_se:
         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
 
+##########################
+# Consensus Cruncher
+###########################
+
+rule create_ini_file:
+    output:
+        ini_file = "{sample}.ini"
+    shell:
+        """
+        cat <<EOF > {output.ini_file}
+        [fastq2bam]
+        fastq1 = skip
+        fastq2 = skip
+        output = skip
+        name = OPC_Pool-8_53_S353_L004
+        bwa = /cluster/tools/software/bwa/0.7.15/bwa
+        ref = bwa_ref
+        samtools = /cluster/tools/software/samtools/1.9/bin/samtools
+        bpattern = NNT
+        [consensus]
+        bam = {wildcards.sample}.bam
+        c_output = /cluster/projects/scottgroup/people/jinfeng/HPV-seq/OPC2/virusDuplex/hgAligned/consensus
+        EOF
+        """
+
+rule run_consensus_cruncher:
+    input:
+        ini_file = "config_{sample}.ini"
+    output:
+        consensus_output = "consensus_output_{sample}"  # Update this as per your actual output file(s) or directory
+    shell:
+        """
+        python3 /cluster/home/jfzou/ConsensusCruncher3/ConsensusCruncher.py -c {input.ini_file} consensus
+        """
 ############################################
 ## extract spike-ins bam after deduplication
 ############################################

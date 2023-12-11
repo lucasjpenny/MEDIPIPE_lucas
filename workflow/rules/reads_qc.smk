@@ -69,19 +69,37 @@ rule extract_barcode:
 ### UMI-tools can take care of single-end& pair-end!!
 ###########################################################
 ## paired-end
-rule umi_tools_extract_pe:
+# rule umi_tools_extract_pe:
+#     input:
+#         get_renamed_fastq
+#     output:
+#         temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
+#         temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
+#         "barcoded_fq_pe/{sample}_extract.log"
+#     params:
+#         bcp = lambda wildcards: config["umi_pattern"]        ##  deactivate automatic wildcard expansion of {}
+#     shell:
+#         "umi_tools extract --extract-method=regex --stdin={input[0]} --read2-in={input[1]} "
+#         "--bc-pattern={params.bcp} --bc-pattern2={params.bcp} "
+#         "--stdout={output[0]} --read2-out={output[1]} --log={output[2]}"
+
+rule cc_extract_pe:
     input:
         get_renamed_fastq
     output:
-        temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
-        temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
-        "barcoded_fq_pe/{sample}_extract.log"
+        barcode_r1_fastq = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_R1.fastq.gz",
+        barcode_r2_fastq = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_R2.fastq.gz",
+        updated_stats = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_extract.log"
     params:
-        bcp = lambda wildcards: config["umi_pattern"]        ##  deactivate automatic wildcard expansion of {}
+        blist = get_blacklist()
     shell:
-        "umi_tools extract --extract-method=regex --stdin={input[0]} --read2-in={input[1]} "
-        "--bc-pattern={params.bcp} --bc-pattern2={params.bcp} "
-        "--stdout={output[0]} --read2-out={output[1]} --log={output[2]}"
+        """
+        python3 /cluster/home/jfzou/ConsensusCruncher3/ConsensusCruncher/extract_barcodes_overlapStartswith.py --read1 {input[0]} --read2 {input[1]} --outfile barcoded_fq_pe/{sample} --blist {params.blist}
+        
+        qnameKey=$(head {input.r1_fastq} -n 1 | awk -F':' '{{print $1}}')
+        grep "^$qnameKey" {output.barcode_r1_fastq} | wc -l | awk '{{print "filter T R1: "$0}}' >> {output.updated_stats}
+        grep "^$qnameKey" {output.barcode_r2_fastq} | wc -l | awk '{{print "filter T R2: "$0}}' >> {output.updated_stats}
+        """
 
 #singe-end
 rule umi_tools_extract_se:
