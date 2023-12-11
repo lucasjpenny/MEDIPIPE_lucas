@@ -2,4 +2,3 @@
 ._.DS_Store
 .snakemake/
 ._HPVseq_pipeline
-workflow/frag-pipeline/

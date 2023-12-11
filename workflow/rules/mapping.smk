@@ -200,7 +200,7 @@ rule insert_size_secondary:
     params:
         pipeline_env = env_dir
     log:
-        "logs/{sample}_picard_secondary_insert_size.log"
+        "logs/{sample}_picard_insert_size.log"
     shell:
         "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
