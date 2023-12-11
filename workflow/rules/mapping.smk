@@ -14,7 +14,7 @@ rule bwa_map:
         "logs/{sample}_bwa_map.log"
     shell:
         "(bwa mem -M -t {threads}  {input} | "
-        "samtools view -b -f 4 - | samtools index - | samtools bam2fq - | "
+        "samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
         "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
         "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
 
