@@ -123,6 +123,7 @@ rule secondary_samtools_umi_pe:
         #I modifed this line to filter out unmapped reads for only the HPV16 genome
         "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
         "samtools view -b -f 257 -F 2572 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
+        "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
