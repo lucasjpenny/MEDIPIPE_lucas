@@ -4,13 +4,13 @@
 ## to make sure consistant wildcard.sample
 ################################################
 ## single end
-rule merge_and_rename_fq_se:
-    input:
-        get_raw_fastq_se
-    output:
-        temp("renamed_fq/{sample}.fastq.gz"),
-    shell:
-        "cat {input} > {output}"
+# rule merge_and_rename_fq_se:
+#     input:
+#         get_raw_fastq_se
+#     output:
+#         temp("renamed_fq/{sample}.fastq.gz"),
+#     shell:
+#         "cat {input} > {output}"
 
 ## paired-end
 rule merge_and_rename_fq_pe:
@@ -24,8 +24,8 @@ rule merge_and_rename_fq_pe:
         "cat {input.R1} > {output[0]} && "
         "cat {input.R2} > {output[1]} "
 
-"""
-## Obsoleted !!
+## Obsoleted !
+umi_regex = r"""(?P<umi_1>\\^[ACGT]{6})"""
 ###########################################################
 ### extract UMI barcode and add it to FASTQ headers, p.r.n.
 ### pair-end unzipped FASTQ only with ConsensusCruncher
@@ -34,34 +34,31 @@ rule extract_barcode:
     input:
         get_renamed_fastq
     output:
-        temp("barcoded_fq/{sample}_R1.fastq"),
-        temp("barcoded_fq/{sample}_R2.fastq"),
-        "barcoded_fq/{sample}_R1.fastq.gz",
-        "barcoded_fq/{sample}_R2.fastq.gz"
-    conda:
-        "extra_env/ConsensusCruncher.yaml"
+        file1 = temp("barcoded_fq_pe/{sample}_barcode_R1.fastq"),
+        file2 = temp("barcoded_fq_pe/{sample}_barcode_R2.fastq"),
+        file3 = "barcoded_fq_pe/{sample}_R1.fastq.gz",
+        file4 = "barcoded_fq_pe/{sample}_R2.fastq.gz"
     params:
-        src = pipe_dir + "/workflow/dependencies/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py",
-        blist = umi_list,                 ## barcode list
-        outfile = "barcoded_fq/{sample}"
+        src = "/cluster/home/t116306uhn/Reference/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py",    
+        outfile = "barcoded_fq_pe/{sample}"          
     shell:
         ## unzip gz files
-        "gunzip {input[0]} -c > {params.outfile}_R1.fastq && "
-        "gunzip {input[1]} -c > {params.outfile}_R2.fastq && "
+        "gunzip {input[0]} -c > {output.file1} && "
+        "gunzip {input[1]} -c > {output.file2} && "
 
         ## extract barcodes
-        #"python  {params.src} --bpattern NNT "
-        "python  {params.src} --blist {params.blist} "
-        "--read1  {input[0]}  --read2   {input[1]} "
+        "python  {params.src} "
+        "--blist /cluster/projects/scottgroup/people/jinfeng/data/barcode_DIME_5or6UMI.txt "
+        "--read1  {output.file1}  --read2   {output.file2} "
         "--outfile  {params.outfile} && "
 
         ## gzip
-        "gzip  {params.outfile}_barcode_R*.fastq  && "
+        "gzip  {output.file1} && gzip {output.file2} && "
 
         ## change to consistant names for following steps
-        "mv {params.outfile}_barcode_R1.fastq.gz  {params.outfile}_R1.fastq.gz && "
-        "mv {params.outfile}_barcode_R2.fastq.gz  {params.outfile}_R2.fastq.gz"
-"""
+        "mv {output.file1}.gz  {output.file3} && "
+        "mv {output.file2}.gz  {output.file4}"
+
 
 
 ###########################################################
@@ -83,23 +80,24 @@ rule extract_barcode:
 #         "--bc-pattern={params.bcp} --bc-pattern2={params.bcp} "
 #         "--stdout={output[0]} --read2-out={output[1]} --log={output[2]}"
 
-rule cc_extract_pe:
-    input:
-        get_renamed_fastq
-    output:
-        barcode_r1_fastq = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_R1.fastq.gz",
-        barcode_r2_fastq = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_R2.fastq.gz",
-        updated_stats = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_extract.log"
-    params:
-        blist = get_blacklist()
-    shell:
-        """
-        python3 /cluster/home/jfzou/ConsensusCruncher3/ConsensusCruncher/extract_barcodes_overlapStartswith.py --read1 {input[0]} --read2 {input[1]} --outfile barcoded_fq_pe/{sample} --blist {params.blist}
+# rule cc_extract_pe:
+#     input:
+#         get_renamed_fastq
+#     output:
+#         barcode_r1_fastq = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_R1.fastq.gz",
+#         barcode_r2_fastq = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_R2.fastq.gz",
+#         updated_stats = "barcoded_fq_pe/{sample}/fastq_tag/{sample}_extract.log"
+#     params:
+#         blist = get_blacklist(),
+#         outfile = "barcoded_fq_pe/{sample}"
+#     shell:
+#         """
+#         python3 /cluster/home/t116306uhn/Reference/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py --read1 {input[0]} --read2 {input[1]} --outfile {params.outfile} --blist {params.blist}
         
-        qnameKey=$(head {input.r1_fastq} -n 1 | awk -F':' '{{print $1}}')
-        grep "^$qnameKey" {output.barcode_r1_fastq} | wc -l | awk '{{print "filter T R1: "$0}}' >> {output.updated_stats}
-        grep "^$qnameKey" {output.barcode_r2_fastq} | wc -l | awk '{{print "filter T R2: "$0}}' >> {output.updated_stats}
-        """
+#         qnameKey=$(head {input[0]} -n 1 | awk -F':' '{{print $1}}')
+#         grep "^$qnameKey" {output.barcode_r1_fastq} | wc -l | awk '{{print "filter T R1: "$0}}' >> {output.updated_stats}
+#         grep "^$qnameKey" {output.barcode_r2_fastq} | wc -l | awk '{{print "filter T R2: "$0}}' >> {output.updated_stats}
+#         """
 
 #singe-end
 rule umi_tools_extract_se:

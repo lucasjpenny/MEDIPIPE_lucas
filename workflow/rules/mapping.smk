@@ -15,9 +15,9 @@ rule bwa_map:
         "logs/{sample}_bwa_map.log"
     shell:
         "(bwa mem -M -t {threads}  {input} | "
-        "samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
         "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
+        #samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
+        # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
 
 ##########################################
 ## raw bams without any filtering
@@ -81,30 +81,30 @@ rule samtools_markdup_stats_se:
 ## Deduplication with UMI-tools, which takes both UMI and coordinates info into account
 ## UMI-tools dosen't support parallel threads yet!!
 ## paired-end
-rule samtools_umi_tools_pe:
-    input:
-        "raw_bam/{sample}_sorted.bam"
-    output:
-        dedup_bam = "dedup_bam_umi_pe/{sample}_dedup.bam",
-        bam_stat = "dedup_bam_umi_pe/{sample}_dedup.bam.stats.txt",
-    params:
-        tmp_bam = "dedup_bam_umi_pe/{sample}_tmp.bam",
-        stat_prefix = "dedup_bam_umi_pe/{sample}_dedup"
-    threads: 12
-    log:
-        "logs/{sample}_dedup_umi.log"
-    shell:
-        ## --umi-separator='_' by default, could also be ":"
-        ## umi tools --method='unique', by default is 'directional'
-        ##  -output-stats can slow down the processing and increase memory usage considerably
-        #I modifed this line to filter out unmapped reads for only the HPV16 genome
-        "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
-        "samtools view -b -f 2 -F 2828 --threads {threads} {params.tmp_bam} > {output.dedup_bam} && "
-        # "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
-        "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
-        "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
+# rule samtools_umi_tools_pe:
+#     input:
+#         "raw_bam/{sample}_sorted.bam"
+#     output:
+#         dedup_bam = "dedup_bam_umi_pe/{sample}_dedup.bam",
+#         bam_stat = "dedup_bam_umi_pe/{sample}_dedup.bam.stats.txt",
+#     params:
+#         tmp_bam = "dedup_bam_umi_pe/{sample}_tmp.bam",
+#         stat_prefix = "dedup_bam_umi_pe/{sample}_dedup"
+#     threads: 12
+#     log:
+#         "logs/{sample}_dedup_umi.log"
+#     shell:
+#         ## --umi-separator='_' by default, could also be ":"
+#         ## umi tools --method='unique', by default is 'directional'
+#         ##  -output-stats can slow down the processing and increase memory usage considerably
+#         #I modifed this line to filter out unmapped reads for only the HPV16 genome
+#         "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
+#         "samtools view -b -f 2 -F 2828 --threads {threads} {params.tmp_bam} > {output.dedup_bam} && "
+#         # "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
+#         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
+#         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
-rule samtools_umi_tools_pe:
+rule samtools_secondary_umi_tools_pe:
     input:
         "raw_bam/{sample}_sorted.bam"
     output:
@@ -154,6 +154,10 @@ rule samtools_umi_tools_se:
 ###########################
 
 rule create_ini_file:
+    input:
+        "raw_bam/{sample}_sorted.bam"
+    params:
+        samplename = "{sample}"
     output:
         ini_file = "{sample}.ini"
     shell:
@@ -163,26 +167,33 @@ rule create_ini_file:
         fastq1 = skip
         fastq2 = skip
         output = skip
-        name = OPC_Pool-8_53_S353_L004
+        name = {params.samplename}
         bwa = /cluster/tools/software/bwa/0.7.15/bwa
         ref = bwa_ref
         samtools = /cluster/tools/software/samtools/1.9/bin/samtools
         bpattern = NNT
         [consensus]
-        bam = {wildcards.sample}.bam
-        c_output = /cluster/projects/scottgroup/people/jinfeng/HPV-seq/OPC2/virusDuplex/hgAligned/consensus
-        EOF
+        bam = {input}
+        c_output = /cluster/projects/scottgroup/people/lucas/test/cc_data
         """
 
 rule run_consensus_cruncher:
     input:
-        ini_file = "config_{sample}.ini"
+        ini_file = "{sample}.ini"
     output:
-        consensus_output = "consensus_output_{sample}"  # Update this as per your actual output file(s) or directory
+        consensus_output = "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}/dcs_sc/{sample}.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
         python3 /cluster/home/jfzou/ConsensusCruncher3/ConsensusCruncher.py -c {input.ini_file} consensus
         """
+
+rule get_dedup_bam_from_cc:
+    input:
+        "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}/dcs_sc/{sample}.all.unique.dcs.sorted.bam"
+    output:
+        dedup_bam = "dedup_bam_umi_pe/{sample}_dedup.bam",
+    shell: 
+        "mv {input} {output}"
 ############################################
 ## extract spike-ins bam after deduplication
 ############################################
