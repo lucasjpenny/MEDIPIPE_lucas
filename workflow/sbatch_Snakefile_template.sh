@@ -9,7 +9,7 @@
 ## submit the snakemake for sample list
 ## configure shell: full path to conda.sh
 # source ~/miniconda3/etc/profile.d/conda.sh
-conda activate frag-pipeline
+# conda activate frag-pipeline
 
 module load trim_galore
 module load samtools/1.10
@@ -40,6 +40,6 @@ snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow
           --use-conda  --conda-prefix frag-pipeline \
           --cluster-config /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config/cluster_std_err.json \
           --cluster "sbatch -p himem -c 12 --mem=60G -t 5:0:0 -o {cluster.std} -e {cluster.err}" \
-          --latency-wait 60 --jobs 4 -p --dry-run
+          --latency-wait 60 --jobs 4 -p #--dry-run
 
 conda deactivate
