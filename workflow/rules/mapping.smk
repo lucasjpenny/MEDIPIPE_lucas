@@ -29,7 +29,7 @@ rule samtools_sort_index_stats:
         #temp(bam = "raw_bam/{sample}_sorted.bam"), doesn't work
         #bai = "raw_bam/{sample}_sorted.bam.bai",
         #stat= "raw_bam/{sample}_sorted.bam.stats.txt"
-        temp("raw_bam/{sample}_sorted.bam"),
+        "raw_bam/{sample}_sorted.bam",
         "raw_bam/{sample}_sorted.bam.stats.txt"
     threads: 12
     shell:
@@ -181,19 +181,19 @@ rule run_consensus_cruncher:
     input:
         ini_file = "{sample}.ini"
     output:
-        consensus_output = "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}/dcs_sc/{sample}.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
+        consensus_output = "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}_sorted/dcs_sc/{sample}.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
-        python3 /cluster/home/jfzou/ConsensusCruncher3/ConsensusCruncher.py -c {input.ini_file} consensus
+        python3 /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher/ConsensusCruncher.py -c {input.ini_file} consensus
         """
 
 rule get_dedup_bam_from_cc:
     input:
-        "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}/dcs_sc/{sample}.all.unique.dcs.sorted.bam"
+        "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}_sorted/dcs_sc/{sample}.all.unique.dcs.sorted.bam"
     output:
         dedup_bam = "dedup_bam_umi_pe/{sample}_dedup.bam",
     shell: 
-        "mv {input} {output}"
+        "mv {input}* {output}"
 ############################################
 ## extract spike-ins bam after deduplication
 ############################################
@@ -250,5 +250,4 @@ rule insert_size:
 #         "logs/{sample}_picard_insert_size_spikein.log"
 #     shell:
 #         "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
-#         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
-#         "H={output.hist}) 2> {log}"
+#         "CollectInsertSizeMetrics M=0.05 I={in

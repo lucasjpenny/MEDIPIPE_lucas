@@ -34,30 +34,32 @@ rule extract_barcode:
     input:
         get_renamed_fastq
     output:
-        file1 = temp("barcoded_fq_pe/{sample}_barcode_R1.fastq"),
-        file2 = temp("barcoded_fq_pe/{sample}_barcode_R2.fastq"),
+        file1 = temp("barcoded_fq_pe/{sample}_unzip_R1.fastq"),
+        file2 = temp("barcoded_fq_pe/{sample}_unzip_R2.fastq"),
         file3 = "barcoded_fq_pe/{sample}_R1.fastq.gz",
-        file4 = "barcoded_fq_pe/{sample}_R2.fastq.gz"
+        file4 = "barcoded_fq_pe/{sample}_R2.fastq.gz",
     params:
         src = "/cluster/home/t116306uhn/Reference/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py",    
         outfile = "barcoded_fq_pe/{sample}"          
     shell:
+        """
         ## unzip gz files
-        "gunzip {input[0]} -c > {output.file1} && "
-        "gunzip {input[1]} -c > {output.file2} && "
+        gunzip {input[0]} -c > {output.file1} && 
+        gunzip {input[1]} -c > {output.file2}
 
         ## extract barcodes
-        "python  {params.src} "
-        "--blist /cluster/projects/scottgroup/people/jinfeng/data/barcode_DIME_5or6UMI.txt "
-        "--read1  {output.file1}  --read2   {output.file2} "
-        "--outfile  {params.outfile} && "
+        python3 {params.src} \
+        --blist /cluster/projects/scottgroup/people/jinfeng/data/barcode_DIME_5or6UMI.txt \
+        --read1 {output.file1} --read2 {output.file2} \
+        --outfile {params.outfile}
 
         ## gzip
-        "gzip  {output.file1} && gzip {output.file2} && "
+        gzip {params.outfile}_barcode_R1.fastq && gzip {params.outfile}_barcode_R2.fastq
+        # Optional: Rename the gzipped files if needed
+        mv {params.outfile}_barcode_R1.fastq.gz {output.file3}
+        mv {params.outfile}_barcode_R2.fastq.gz {output.file4}
+        """
 
-        ## change to consistant names for following steps
-        "mv {output.file1}.gz  {output.file3} && "
-        "mv {output.file2}.gz  {output.file4}"
 
 
 
@@ -183,4 +185,4 @@ rule fastqc_pe:
         "fastqc_pe/{sample}_R2_val_2_fastqc.zip"
     run:
         for fq in input:
-            shell("fastqc {} -t 8 --outdir fastqc_pe/".format(fq))
+            
