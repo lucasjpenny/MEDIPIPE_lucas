@@ -62,7 +62,8 @@ def get_rule_all_input():
     frag_size = expand("fragment_size/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
     fp_gc = expand("fragment_profile/{samples}_50_Granges.bed", samples = SAMPLES["sample_id"]),
     frag_size_secondary = expand("fragment_size_secondary/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
-    return  fq_qc + frag_size 
+    hpv_viewer_repeatmasker = expand("hpv_viewer_repeatmasker/{samples}_HPV_profile.txt", samples = SAMPLES["sample_id"]),
+    return  fq_qc + frag_size + hpv_viewer_repeatmasker
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
@@ -302,6 +303,4 @@ def get_aggr_qc_stats():
         return fastqc + sam_stats + frag_stats + meth_qc
     else:
          fastqc = "aggregated/QC_se/multiqc_data/multiqc_fastqc.txt",
-         sam_stats = "aggregated/QC_se/multiqc_data/multiqc_samtools_stats.txt",
-         meth_qc = "aggregated/meth_qc.txt",
-         return fastqc + sam_stats + meth_qc
+         sam_stats = "a

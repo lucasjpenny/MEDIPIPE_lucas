@@ -18,6 +18,7 @@ module load bwa
 # module load bedtools/2.27.1
 module load R
 module load fastqc
+module load bowtie2
 
 
 ## mkdir for cluster submission logs
@@ -39,7 +40,7 @@ snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow
           --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config_template.yaml \
           --use-conda  --conda-prefix frag-pipeline \
           --cluster-config /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config/cluster_std_err.json \
-          --cluster "sbatch -p himem -c 12 --mem=60G -t 20:0:0 -o {cluster.std} -e {cluster.err}" \
+          --cluster "sbatch -p himem -c 12 --mem=60G -t 10:0:0 -o {cluster.std} -e {cluster.err}" \
           --latency-wait 60 --jobs 4 -p #--dry-run
 
-conda deactivate
+# conda deactivate

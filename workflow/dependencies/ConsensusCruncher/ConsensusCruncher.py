@@ -253,7 +253,7 @@ def consensus(args):
         ############
         # DCS + SC #
         ############
-        os.makedirs(sample_dir + '/dcs_sc')
+        # os.makedirs(sample_dir + '/dcs_sc') #COMMENTED OUT THIS LINE FOR SNAKEMAKE
         dcs_sc = '{}/dcs_sc/{}.dcs.sc.bam'.format(sample_dir, identifier)
         # Move stats and time tracker file to next dir
         os.rename('{}/sscs/{}.stats.txt'.format(sample_dir, identifier),
@@ -482,5 +482,4 @@ if __name__ == '__main__':
                 sub_b.print_help()
             else:
                 args.func(args)
-        else:
-            main_p.print_help()
+     

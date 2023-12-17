@@ -15,9 +15,25 @@ rule bwa_map:
         "logs/{sample}_bwa_map.log"
     shell:
         "(bwa mem -M -t {threads}  {input} | "
-        "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
-        #samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
+        "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
+        #" samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
         # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
+        "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
+        
+
+rule hpv_viewer_repeatmasker:
+    input:
+        get_trimmed_fastq
+    output:
+        "hpv_viewer_repeatmasker/{sample}/{sample}.bam",
+        temp("hpv_viewer_repeatmasker/{sample}/{sample}.sam"),
+        "hpv_viewer_repeatmasker/{sample}_HPV_profile.txt",
+    params:
+        samplename = "{sample}"
+    shell:
+        "python /cluster/home/t116306uhn/Reference/HPViewer/HPViewer.py -1 {input[0]} -2 {input[1]} -p {threads} -c 90 -o hpv_viewer_repeatmasker/{params.samplename}"
+
+
 
 ##########################################
 ## raw bams without any filtering
@@ -181,7 +197,7 @@ rule run_consensus_cruncher:
     input:
         ini_file = "{sample}.ini"
     output:
-        consensus_output = "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}_sorted/dcs_sc/{sample}.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
+        consensus_output = "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
         python3 /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher/ConsensusCruncher.py -c {input.ini_file} consensus
@@ -189,11 +205,14 @@ rule run_consensus_cruncher:
 
 rule get_dedup_bam_from_cc:
     input:
-        "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}_sorted/dcs_sc/{sample}.all.unique.dcs.sorted.bam"
+        file = "/cluster/projects/scottgroup/people/lucas/test/cc_data/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"
     output:
         dedup_bam = "dedup_bam_umi_pe/{sample}_dedup.bam",
-    shell: 
-        "mv {input}* {output}"
+    shell:
+        """ 
+        cp {input.file} {output.dedup_bam}
+        cp {input.file}.bai {output.dedup_bam}.bai
+        """
 ############################################
 ## extract spike-ins bam after deduplication
 ############################################
@@ -230,24 +249,4 @@ rule insert_size:
     params:
         pipeline_env = env_dir
     log:
-        "logs/{sample}_picard_insert_size.log"
-    shell:
-        "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
-        "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
-        "H={output.hist}) 2> {log}"
-
-
-# ## spike-ins
-# rule insert_size_spikein:
-#     input:
-#         "dedup_bam_spikein/{sample}_spikein.bam"
-#     output:
-#         txt = "fragment_size_spikein/{sample}_insert_size_metrics.txt",
-#         hist = "fragment_size_spikein/{sample}_insert_size_histogram.pdf"
-#     params:
-#         pipeline_env = env_dir
-#     log:
-#         "logs/{sample}_picard_insert_size_spikein.log"
-#     shell:
-#         "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
-#         "CollectInsertSizeMetrics M=0.05 I={in
+        "logs/{sample}_picar

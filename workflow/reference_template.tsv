@@ -1,5 +1,5 @@
 genome_name	BSgenome.Hsapiens.UCSC.hg19
-bwa_index	/cluster/home/t116306uhn/Reference/genome_reference/hg_hpv16_combined_genome.fa
-humanonly	/cluster/tools/data/genomes/human/hg19/bwa/ucsc.hg19.fasta
+bwa_index	/cluster/tools/data/genomes/human/hg19/bwa/ucsc.hg19.fasta
+fusion	/cluster/home/t116306uhn/Reference/genome_reference/hg_hpv16_combined_genome.fa
 bwa_index_spikein	NA
 blacklist	/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/test/Reference/blacklist.bed
