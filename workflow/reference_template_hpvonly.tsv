@@ -1,4 +1,0 @@
-genome_name	HPV16only
-bwa_index	/cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta
-bwa_index_spikein	NA
-blacklist	/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/test/Reference/blacklist.bed

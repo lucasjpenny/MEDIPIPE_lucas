@@ -62,8 +62,12 @@ def get_rule_all_input():
     frag_size = expand("fragment_size/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
     fp_gc = expand("fragment_profile/{samples}_50_Granges.bed", samples = SAMPLES["sample_id"]),
     frag_size_secondary = expand("fragment_size_secondary/{samples}_insert_size_metrics.txt", samples = SAMPLES["sample_id"]),
-    hpv_viewer_repeatmasker = expand("hpv_viewer_repeatmasker/{samples}_HPV_profile.txt", samples = SAMPLES["sample_id"]),
-    return  fq_qc + frag_size + hpv_viewer_repeatmasker
+    hpv_viewer_repeatmasker = expand("hpv_viewer_repeatmasker/{samples}/{samples}_HPV_profile.txt", samples = SAMPLES["sample_id"]),
+    fusion_raw = expand("raw_bam_fusion/{samples}.bam", samples = SAMPLES["sample_id"]),
+    frag_agg =  expand("fragment_size/fragment_length_summary.csv"),
+    frag_agg_virus =  expand("fragment_size_virus/fragment_length_summary.csv"),
+    shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
+    return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker #+ shift_dedup + frag_agg_virus
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
@@ -160,6 +164,20 @@ def get_bwa_index():
     else:
         return REF.loc["bwa_index"][1]
 
+def get_bwa_fusion_index():
+    if config["spike_in"]:
+        #return REF.loc["bwa_idx_spikein"][1]
+        return config["spike_idx"]
+    else:
+        return REF.loc["fusion_index"][1]
+
+def get_bwa_shifted_index():
+    if config["spike_in"]:
+        #return REF.loc["bwa_idx_spikein"][1]
+        return config["spike_idx"]
+    else:
+        return REF.loc["shifted"][1]
+
 
 ################################################################
 ##  get raw fastq files for rename to consistant wildcard.sample
@@ -232,15 +250,15 @@ def get_dedup_bam(wildcards):
     else:
         return "dedup_bam_se/{}_dedup.bam".format(wildcards.sample)
 
-def get_secondary_dedup_bam(wildcards):
+def get_dedup_bam_virus(wildcards):
     if config["paired-end"] and config["add_umi"]:
-        return "dedup_secondary_bam_umi_pe/{}_dedup.bam".format(wildcards.sample)
+        return "dedup_bam_umi_pe_shifted/{}_dedup.bam".format(wildcards.sample)
     elif config["paired-end"] and config["add_umi"] == False:
-        return "dedup_secondary_bam_umi_pe/{}_dedup.bam".format(wildcards.sample)
+        return "dedup_bam_umi_pe_shifted/{}_dedup.bam".format(wildcards.sample)
     elif config["paired-end"] == False and config["add_umi"]:
-        return "dedup_bam_umi_se/{}_dedup.bam".format(wildcards.sample)
+        return "dedup_bam_umi_pe_shifted/{}_dedup.bam".format(wildcards.sample)
     else:
-        return "dedup_bam_se/{}_dedup.bam".format(wildcards.sample)
+        return "dedup_bam_umi_pe_shifted/{}_dedup.bam".format(wildcards.sample)
 
 
 ## spike-ins
@@ -303,4 +321,6 @@ def get_aggr_qc_stats():
         return fastqc + sam_stats + frag_stats + meth_qc
     else:
          fastqc = "aggregated/QC_se/multiqc_data/multiqc_fastqc.txt",
-         sam_stats = "a
+         sam_stats = "aggregated/QC_se/multiqc_data/multiqc_samtools_stats.txt",
+         meth_qc = "aggregated/meth_qc.txt",
+         return fastqc + sam_stats + meth_qc

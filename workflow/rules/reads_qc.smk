@@ -36,8 +36,8 @@ rule extract_barcode:
     output:
         file1 = temp("barcoded_fq_pe/{sample}_unzip_R1.fastq"),
         file2 = temp("barcoded_fq_pe/{sample}_unzip_R2.fastq"),
-        file3 = "barcoded_fq_pe/{sample}_R1.fastq.gz",
-        file4 = "barcoded_fq_pe/{sample}_R2.fastq.gz",
+        file3 = temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
+        file4 = temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
     params:
         src = "/cluster/home/t116306uhn/Reference/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py",    
         outfile = "barcoded_fq_pe/{sample}"          
@@ -143,8 +143,8 @@ rule trim_galore_pe:
     input:
         get_fastq_4trim
     output:
-        temp("trimmed_fq/{sample}_R1_val_1.fq.gz"),
-        temp("trimmed_fq/{sample}_R2_val_2.fq.gz"),
+        temp("trimmed_fq/{sample}_R1_val_1.fq.gz"), #SHOULD BE temp
+        temp("trimmed_fq/{sample}_R2_val_2.fq.gz"), #SHOULD BE temp
         "trimmed_fq/{sample}_R1.fastq.gz_trimming_report.txt",
         "trimmed_fq/{sample}_R2.fastq.gz_trimming_report.txt",
     params:
@@ -185,4 +185,4 @@ rule fastqc_pe:
         "fastqc_pe/{sample}_R2_val_2_fastqc.zip"
     run:
         for fq in input:
-            
+            shell("fastqc {} -t 8 --outdir fastqc_pe/".format(fq))

@@ -12,7 +12,7 @@
 # conda activate frag-pipeline
 
 module load trim_galore
-module load samtools/1.10
+module load samtools/1.14
 module load picard/2.10.9
 module load bwa
 # module load bedtools/2.27.1
@@ -28,7 +28,7 @@ module load bowtie2
 
 ## unlock workdir just in case the folder locked accidently before
 snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/Snakefile  \
-          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config_template.yaml \
+          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240127_config_template.yaml \
           --unlock
 
 ## -p   partition to submit for SLURM
@@ -36,11 +36,20 @@ snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow
 ## --jobs   ## number of samples in modified sample_tmplate.tsv files (independent steps will be scheduled per sample)
 ## sbatch -c :  maximal 12 threads per multithreading job by default, less -c INT  will be scaled down to INT
 
+# snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/Snakefile \
+#           --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240114_config_template.yaml \
+#           --use-conda  --conda-prefix frag-pipeline \
+#           --cluster-config /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config/cluster_std_err.json \
+#           --cluster "sbatch -p himem -c 12 --mem=60G -t 23:0:0 -o {cluster.std} -e {cluster.err}" \
+#           --latency-wait 60 --jobs 60 -p --rerun-incomplete #--dry-run
+
+# # conda deactivate
+
 snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/Snakefile \
-          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config_template.yaml \
+          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240127_config_template.yaml \
           --use-conda  --conda-prefix frag-pipeline \
           --cluster-config /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config/cluster_std_err.json \
-          --cluster "sbatch -p himem -c 12 --mem=60G -t 10:0:0 -o {cluster.std} -e {cluster.err}" \
-          --latency-wait 60 --jobs 4 -p #--dry-run
+          --cluster "sbatch -p himem -c 12 --mem=60G -t 12:0:0 -o {cluster.std} -e {cluster.err}" \
+          --latency-wait 60 --jobs 25 -p --rerun-incomplete #--dry-run
 
 # conda deactivate

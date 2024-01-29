@@ -9,4 +9,4 @@
         "std": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.out",
         "err": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.err"
     },
-}
+  
