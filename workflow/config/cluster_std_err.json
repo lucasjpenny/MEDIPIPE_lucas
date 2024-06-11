@@ -9,4 +9,17 @@
         "std": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.out",
         "err": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.err"
     },
-  
+    "create_metrics_summary":
+    {
+        "jid": "create_metrics_summary",
+        "std": "logs_cluster/submit_create_metrics_summary_%j.out",
+        "err": "logs_cluster/submit_create_metrics_summary_%j.err"
+    },
+    "create_metrics_summary_virus":
+    {
+        "jid": "create_metrics_summary_virus",
+        "std": "logs_cluster/submit_create_metrics_summary_virus_%j.out",
+        "err": "logs_cluster/submit_create_metrics_summary_virus_%j.err"
+    }
+}
+

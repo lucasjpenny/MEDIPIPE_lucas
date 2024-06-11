@@ -482,4 +482,5 @@ if __name__ == '__main__':
                 sub_b.print_help()
             else:
                 args.func(args)
-     
+        else:
+            main_p.print_help()

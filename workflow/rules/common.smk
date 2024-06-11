@@ -67,7 +67,7 @@ def get_rule_all_input():
     frag_agg =  expand("fragment_size/fragment_length_summary.csv"),
     frag_agg_virus =  expand("fragment_size_virus/fragment_length_summary.csv"),
     shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
-    return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker #+ shift_dedup + frag_agg_virus
+    return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker + shift_dedup + frag_agg_virus
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
