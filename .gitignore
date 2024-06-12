@@ -2,3 +2,4 @@
 ._.DS_Store
 .snakemake/
 ._HPVseq_pipeline
+workflow/20240127_OPC_processing_info/*
