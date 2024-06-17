@@ -72,10 +72,10 @@ def get_rule_all_input():
     fusion_raw = expand("raw_bam_fusion/{samples}.bam", samples = SAMPLES["sample_id"]),
     frag_agg =  expand("fragment_size/fragment_length_summary.csv"),
     frag_agg_virus =  expand("fragment_size_virus/fragment_length_summary.csv"),
-    shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
+    # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
     shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = get_sample_ids_from_checkpoint()),
 
-    return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker + shift_dedup + frag_agg_virus
+    return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker  + frag_agg_virus #+ shift_dedup #haven't implemented shifted yet
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr

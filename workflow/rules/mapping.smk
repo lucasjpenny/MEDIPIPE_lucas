@@ -23,7 +23,9 @@ rule bwa_map:
         # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
         "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
 
-def get_genotype_from_sample(sample_id):
+REF = pd.read_csv(config["ref_files"], sep="\t", header = None, index_col = 0)
+
+def get_genotype_dir_from_sample(sample_id):
     # Path to the JSON file produced by the checkpoint
     json_file_path = "hpv_viewer_repeatmasker/dom_genotype_summary.json"
     
@@ -33,28 +35,30 @@ def get_genotype_from_sample(sample_id):
     
     # Extract the genotype for the given sample ID
     genotype = samples_dict.get(sample_id)
-    return genotype
+    dir = REF.loc[genotype][1]
+    return dir
 
 
-#this gives the output of the virus information from the unmapped human. 
 rule virus_bwa_map:
     priority: 10
     input:
-        #config["bwa_index"],
-        get_bwa_index(),
-        get_trimmed_fastq
+        # Assuming get_bwa_index and get_trimmed_fastq are functions returning file paths
+        bwa_index=get_bwa_index(),
+        fastq=get_trimmed_fastq
     output:
         temp("raw_bam_virus/{sample}.bam")
-        # "raw_bam_virus/{sample}.bam"
+    params:
+        # Assuming get_genotype_dir_from_sample is a function
+        genotype_dir=lambda wildcards: get_genotype_dir_from_sample(wildcards.sample)
     threads: 12
     log:
         "logs/{sample}_bwa_map.log"
     shell:
-        "(bwa mem -M -t {threads} {input} | "
+        "(bwa mem -M -t {threads} {input.bwa_index} {input.fastq} | "
         "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |" #change get_genotype_from_sample for HPV genotype
-        "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
-        "samtools view -Sb --threads {threads} - | samtools sort - > {output} &&"
+        "bwa mem -M -p -t {threads} {params.genotype_dir} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
+        "samtools view -b -f 2 -F 2828 --threads {threads} - | " # Removes all secondary alignments
+        "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
         "samtools index {output}) 2> {log}"
 
 rule bwa_map_fusion:
