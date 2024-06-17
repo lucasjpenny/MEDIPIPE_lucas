@@ -39,7 +39,6 @@ rule extract_barcode:
         file3 = temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
         file4 = temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
     params:
-        src = "/cluster/home/t116306uhn/Reference/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py",    
         outfile = "barcoded_fq_pe/{sample}"          
     shell:
         """
@@ -48,7 +47,7 @@ rule extract_barcode:
         gunzip {input[1]} -c > {output.file2}
 
         ## extract barcodes
-        python3 {params.src} \
+        python3 {config[cc_extract]} \
         --blist /cluster/projects/scottgroup/people/jinfeng/data/barcode_DIME_5or6UMI.txt \
         --read1 {output.file1} --read2 {output.file2} \
         --outfile {params.outfile}

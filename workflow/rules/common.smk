@@ -39,6 +39,12 @@ blacklist = REF.loc["blacklist"][1]   ## ENCODE blacklist
 def get_blacklist():
     return blacklist
 
+def get_sample_ids_from_checkpoint():
+    # Read the CSV file produced by the checkpoint
+    df = pd.read_csv("hpv_viewer_repeatmasker/dom_genotype_summary.csv")
+    # Extract the sample IDs (assuming they are in the first column)
+    sample_ids = df.iloc[:, 0].tolist()
+    return sample_ids
 
 #############################################
 ## get taget outputs based on the config file
@@ -67,6 +73,8 @@ def get_rule_all_input():
     frag_agg =  expand("fragment_size/fragment_length_summary.csv"),
     frag_agg_virus =  expand("fragment_size_virus/fragment_length_summary.csv"),
     shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
+    shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = get_sample_ids_from_checkpoint()),
+
     return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker + shift_dedup + frag_agg_virus
     ###################################
     ######################################

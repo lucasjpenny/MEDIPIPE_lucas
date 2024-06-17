@@ -23,7 +23,20 @@ rule bwa_map:
         # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
         "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
 
-#this gives the output of the virus information from the umapped human. 
+def get_genotype_from_sample(sample_id):
+    # Path to the JSON file produced by the checkpoint
+    json_file_path = "hpv_viewer_repeatmasker/dom_genotype_summary.json"
+    
+    # Read the JSON file
+    with open(json_file_path, 'r') as file:
+        samples_dict = json.load(file)
+    
+    # Extract the genotype for the given sample ID
+    genotype = samples_dict.get(sample_id)
+    return genotype
+
+
+#this gives the output of the virus information from the unmapped human. 
 rule virus_bwa_map:
     priority: 10
     input:
@@ -39,7 +52,7 @@ rule virus_bwa_map:
     shell:
         "(bwa mem -M -t {threads} {input} | "
         "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
+        "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |" #change get_genotype_from_sample for HPV genotype
         "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
         "samtools view -Sb --threads {threads} - | samtools sort - > {output} &&"
         "samtools index {output}) 2> {log}"
@@ -106,9 +119,91 @@ rule hpv_viewer_repeatmasker:
     params:
         samplename = "{sample}"
     shell:
-        "python /cluster/home/t116306uhn/Reference/HPViewer/HPViewer.py -m repeat-mask -1 {input[0]} -2 {input[1]} -p {threads} -c 90 -o hpv_viewer_repeatmasker/{params.samplename}"
+        "python {config[HPViewer]} -m repeat-mask -1 {input[0]} -2 {input[1]} -p {threads} -c 90 -o hpv_viewer_repeatmasker/{params.samplename}"
 
 
+SAMPLES = (
+    pd.read_csv(config["samples"], sep="\t")
+    .set_index("sample_id", drop=False)
+    .sort_index()
+)
+
+rule create_hpviewer_summary:
+    input:
+        metrics_files=expand("hpv_viewer_repeatmasker/{sample}/{sample}_HPV_profile.txt", sample=SAMPLES["sample_id"])
+    output:
+        outfile="hpv_viewer_repeatmasker/dom_genotype_summary.csv"
+    shell:
+        """
+        base_dir="hpv_viewer_repeatmasker"
+        newfile="{output.outfile}"
+
+        # Temporary file for initial aggregation
+        temp_file=$(mktemp)
+
+        # Loop through each folder in the base directory
+        for folder in {input.metrics_files}; do
+            # Extract the sample name from the folder path
+            sample_name=$(basename $(dirname "$folder"))
+            # Modify the sample name by removing "_HPV_profile" if present
+            sample_name="${sample_name/_HPV_profile/}"
+
+            # Check if the file exists
+            if [ -f "$folder" ]; then
+                # Check if the temp_file exists and has content
+                if [ -s "$temp_file" ]; then
+                    # File exists and has content, append without header
+                    awk -v sample="$sample_name" 'BEGIN{{FS=OFS="\t"}} NR>1{{print sample, $0}}' "$folder" >> "$temp_file"
+                else
+                    # File does not exist or is empty, append with header
+                    awk -v sample="$sample_name" 'BEGIN{{FS=OFS="\t"}} NR==1{{print "Sample", $0}} NR>1{{print sample, $0}}' "$folder" > "$temp_file"
+                fi
+            else
+                echo "File not found: $folder"
+            fi
+        done
+
+        # Process the temp_file to get the final output
+        awk 'BEGIN{{FS=OFS="\t"}} NR==1{{header=$0; next}} 
+             {{
+                 if ($4 > 200) {{
+                     if ($1 in max && $4 > max[$1]) {{
+                         max[$1] = $4
+                         line[$1] = $0
+                     }} else if (!($1 in max)) {{
+                         max[$1] = $4
+                         line[$1] = $0
+                     }}
+                 }}
+             }} 
+             END{{ 
+                 print header > "{output.outfile}"
+                 for (sample in line) {{
+                     print line[sample] >> "{output.outfile}"
+                 }}
+             }}' "$temp_file"
+
+        # Clean up temporary file
+        rm "$temp_file"
+        """
+
+checkpoint extract_hpviewer_summary:
+    input:
+        "hpv_viewer_repeatmasker/dom_genotype_summary.csv"
+    output:
+        "hpv_viewer_repeatmasker/dom_genotype_summary.json"
+    python:
+        # Read the CSV file
+        df = pd.read_csv("hpv_viewer_repeatmasker/dom_genotype_summary.csv")
+
+        # Create a dictionary from column 1 and column 4
+        samples_dict = dict(zip(df.iloc[:, 0], df.iloc[:, 3]))
+
+        # Save dictionary to a JSON file
+        with open("hpv_viewer_repeatmasker/dom_genotype_summary.json", 'w') as file:
+            json.dump(samples_dict, file)
+
+        
 
 ##########################################
 ## raw bams without any filtering
@@ -378,7 +473,7 @@ rule run_consensus_cruncher:
         consensus_output = "cc_data/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
-        python3 /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher/ConsensusCruncher.py -c {input.ini_file} consensus
+        python3 {config[cc_run]} -c {input.ini_file} consensus -b False
         """
 
 rule run_consensus_cruncher_kept:
@@ -388,7 +483,7 @@ rule run_consensus_cruncher_kept:
         consensus_output = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
-        python3 /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher_HPV16/ConsensusCruncher.py -c {input.ini_file} consensus
+        python3 {config[cc_run_hpv]} -c {input.ini_file} consensus -b False
         """
 
 rule run_consensus_cruncher_shifted:
@@ -398,7 +493,7 @@ rule run_consensus_cruncher_shifted:
         consensus_output = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
-        python3 /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher_HPV16/ConsensusCruncher.py -c {input.ini_file} consensus
+        python3 {config[cc_run_hpv]} -c {input.ini_file} consensus -b False
         """
 
 rule get_dedup_bam_from_cc:
@@ -486,11 +581,6 @@ rule insert_size_virus:
         "H={output.hist}) 2> {log}"
 
 
-SAMPLES = (
-    pd.read_csv(config["samples"], sep="\t")
-    .set_index("sample_id", drop=False)
-    .sort_index()
-)
 
 rule create_metrics_summary:
     input:
@@ -533,7 +623,7 @@ rule create_metrics_summary:
 rule create_metrics_summary_virus:
     input:
         metrics_files=
-        expand("fragment_size_virus/{samples}_insert_size_metrics.txt",samples = SAMPLES["sample_id"])
+        expand("fragment_size_virus/{samples}_insert_size_metrics.txt",samples = get_sample_ids_from_checkpoint())
     output:
         outfile= "fragment_size_virus/fragment_length_summary.csv"
     params:
