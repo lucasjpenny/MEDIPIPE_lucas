@@ -20,6 +20,20 @@
         "jid": "create_metrics_summary_virus",
         "std": "logs_cluster/submit_create_metrics_summary_virus_%j.out",
         "err": "logs_cluster/submit_create_metrics_summary_virus_%j.err"
+    },
+    "extract_hpviewer_summary":
+    {
+        "jid": "extract_hpviewer_summary",
+        "std": "logs_cluster/submit_extract_hpviewer_summary_%j.out",
+        "err": "logs_cluster/submit_extract_hpviewer_summary_%j.err"
+    },
+    "create_hpviewer_summary":
+    {
+        "jid": "create_hpviewer_summary",
+        "std": "logs_cluster/submit_create_hpviewer_summary_%j.out",
+        "err": "logs_cluster/submit_create_hpviewer_summary_%j.err"
     }
 }
+
+
 

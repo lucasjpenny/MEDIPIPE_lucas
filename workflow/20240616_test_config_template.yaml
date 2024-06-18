@@ -6,12 +6,12 @@
 ## PATH for pipeline and working diretor
 ## for enclosed packages failed to be autimatically installed by conda, like MEDStrand
 pipe_dir: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow         # Full PATH to the MEDIPIPE packe
-work_dir: /cluster/projects/scottgroup/people/lucas/filtered_samples_baseline_HPV-_nopool9_batch5       # allowing submit
+work_dir: /cluster/projects/scottgroup/people/lucas/updated_hpvseq_test       # allowing submit
 
 #################################
 ## Samples Sequencing information
 ## Make sure using the full PATH of FASTQ files in the sample.tsv!!
-samples: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/filtered_samples_baseline_HPV-_nopool9_batch5.txt
+samples: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240616_test_samples.txt
 paired-end: True
 frag_profile: False      ## True for paired-end reads only
 

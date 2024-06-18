@@ -1,3 +1,5 @@
+import json
+
 ################
 ## BWA alignment
 ################
@@ -7,7 +9,8 @@ rule bwa_map:
     input:
         #config["bwa_index"],
         get_bwa_index(),
-        get_trimmed_fastq
+        get_trimmed_fastq,
+        genotype_dir=lambda wildcards: get_genotype_dir_from_sample_hg(wildcards.sample)
     output:
         temp("raw_bam/{sample}.bam")
         # "raw_bam/{sample}.bam"
@@ -15,7 +18,7 @@ rule bwa_map:
     log:
         "logs/{sample}_bwa_map.log"
     shell:
-        "(bwa mem -M -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta {input[1]} {input[2]} | "
+        "(bwa mem -M -t {threads} {input.genotype_dir} {input[1]} {input[2]} | "
         "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
         "bwa mem -M -p -t {threads} {input[0]} - | "
         "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
@@ -25,9 +28,18 @@ rule bwa_map:
 
 REF = pd.read_csv(config["ref_files"], sep="\t", header = None, index_col = 0)
 
+def get_sample_ids_from_checkpoint(wildcards):
+    # Wait for the checkpoint to be ready and get its output
+    hpvviewer_json = checkpoints.extract_hpviewer_summary.get(**wildcards).output[0]
+    with open(hpvviewer_json, 'r') as file:
+        samples_dict = json.load(file)
+    # Extract the sample IDs
+    sample_ids = list(samples_dict.keys())
+    return sample_ids
+
 def get_genotype_dir_from_sample(sample_id):
     # Path to the JSON file produced by the checkpoint
-    json_file_path = "hpv_viewer_repeatmasker/dom_genotype_summary.json"
+    json_file_path = checkpoints.extract_hpviewer_summary.get().output[0]
     
     # Read the JSON file
     with open(json_file_path, 'r') as file:
@@ -38,25 +50,39 @@ def get_genotype_dir_from_sample(sample_id):
     dir = REF.loc[genotype][1]
     return dir
 
+def get_genotype_dir_from_sample_hg(sample_id):
+    # Path to the JSON file produced by the checkpoint
+    json_file_path = checkpoints.extract_hpviewer_summary.get().output[0]
+    
+    # Read the JSON file
+    with open(json_file_path, 'r') as file:
+        samples_dict = json.load(file)
+    
+    # Extract the genotype for the given sample ID, default to "HPV16" if not found
+    genotype = samples_dict.get(sample_id, "HPV16")
+    
+    # Get the directory from the REF DataFrame
+    dir = REF.loc[genotype][1]
+    return dir
 
 rule virus_bwa_map:
     priority: 10
     input:
         # Assuming get_bwa_index and get_trimmed_fastq are functions returning file paths
         bwa_index=get_bwa_index(),
-        fastq=get_trimmed_fastq
+        fastq=get_trimmed_fastq,
+        genotype_dir=lambda wildcards: get_genotype_dir_from_sample(wildcards.sample)
     output:
-        temp("raw_bam_virus/{sample}.bam")
+        "raw_bam_virus/{sample}.bam" #temp("raw_bam_virus/{sample}.bam")
     params:
         # Assuming get_genotype_dir_from_sample is a function
-        genotype_dir=lambda wildcards: get_genotype_dir_from_sample(wildcards.sample)
     threads: 12
     log:
         "logs/{sample}_bwa_map.log"
     shell:
         "(bwa mem -M -t {threads} {input.bwa_index} {input.fastq} | "
         "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} {params.genotype_dir} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
+        "bwa mem -M -p -t {threads} {input.genotype_dir} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
         "samtools view -b -f 2 -F 2828 --threads {threads} - | " # Removes all secondary alignments
         "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
         "samtools index {output}) 2> {log}"
@@ -118,12 +144,12 @@ rule hpv_viewer_repeatmasker:
         get_trimmed_fastq
     output:
         "hpv_viewer_repeatmasker/{sample}/temp/{sample}.bam",
-        temp("hpv_viewer_repeatmasker/{sample}/temp/{sample}.sam"),
+        # temp("hpv_viewer_repeatmasker/{sample}/temp/{sample}.sam"),
         "hpv_viewer_repeatmasker/{sample}/{sample}_HPV_profile.txt",
     params:
         samplename = "{sample}"
     shell:
-        "python {config[HPViewer]} -m repeat-mask -1 {input[0]} -2 {input[1]} -p {threads} -c 90 -o hpv_viewer_repeatmasker/{params.samplename}"
+        "python {config[HPViewer]} -m homology-mask -1 {input[0]} -2 {input[1]} -p {threads} -c 90 -o hpv_viewer_repeatmasker/{params.samplename}"
 
 
 SAMPLES = (
@@ -136,7 +162,7 @@ rule create_hpviewer_summary:
     input:
         metrics_files=expand("hpv_viewer_repeatmasker/{sample}/{sample}_HPV_profile.txt", sample=SAMPLES["sample_id"])
     output:
-        outfile="hpv_viewer_repeatmasker/dom_genotype_summary.csv"
+        outfile="hpv_viewer_repeatmasker/dom_genotype_summary.tsv"
     shell:
         """
         base_dir="hpv_viewer_repeatmasker"
@@ -150,7 +176,7 @@ rule create_hpviewer_summary:
             # Extract the sample name from the folder path
             sample_name=$(basename $(dirname "$folder"))
             # Modify the sample name by removing "_HPV_profile" if present
-            sample_name="${sample_name/_HPV_profile/}"
+            sample_name=$(echo "$sample_name" | sed 's/_HPV_profile//')
 
             # Check if the file exists
             if [ -f "$folder" ]; then
@@ -170,7 +196,7 @@ rule create_hpviewer_summary:
         # Process the temp_file to get the final output
         awk 'BEGIN{{FS=OFS="\t"}} NR==1{{header=$0; next}} 
              {{
-                 if ($4 > 200) {{
+                 if ($4 > 150) {{
                      if ($1 in max && $4 > max[$1]) {{
                          max[$1] = $4
                          line[$1] = $0
@@ -193,18 +219,17 @@ rule create_hpviewer_summary:
 
 checkpoint extract_hpviewer_summary:
     input:
-        "hpv_viewer_repeatmasker/dom_genotype_summary.csv"
+        "hpv_viewer_repeatmasker/dom_genotype_summary.tsv"
     output:
         "hpv_viewer_repeatmasker/dom_genotype_summary.json"
-    python:
+    run:
+        import json
         # Read the CSV file
-        df = pd.read_csv("hpv_viewer_repeatmasker/dom_genotype_summary.csv")
-
+        df = pd.read_csv(input[0],sep='\t')
         # Create a dictionary from column 1 and column 4
-        samples_dict = dict(zip(df.iloc[:, 0], df.iloc[:, 3]))
-
+        samples_dict = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
         # Save dictionary to a JSON file
-        with open("hpv_viewer_repeatmasker/dom_genotype_summary.json", 'w') as file:
+        with open(output[0], 'w') as file:
             json.dump(samples_dict, file)
 
         
@@ -477,7 +502,7 @@ rule run_consensus_cruncher:
         consensus_output = "cc_data/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
-        python3 {config[cc_run]} -c {input.ini_file} consensus -b False
+        python3 {config[cc_run_hg]} -c {input.ini_file} consensus -b False
         """
 
 rule run_consensus_cruncher_kept:
@@ -624,10 +649,10 @@ rule create_metrics_summary:
         """
 
 
+
 rule create_metrics_summary_virus:
     input:
-        metrics_files=
-        expand("fragment_size_virus/{samples}_insert_size_metrics.txt",samples = get_sample_ids_from_checkpoint())
+        metrics_files=lambda wildcards: expand("fragment_size_virus/{sample}_insert_size_metrics.txt", sample=get_sample_ids_from_checkpoint(wildcards))
     output:
         outfile= "fragment_size_virus/fragment_length_summary.csv"
     params:

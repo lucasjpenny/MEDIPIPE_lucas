@@ -28,7 +28,7 @@ module load bowtie2
 
 ## unlock workdir just in case the folder locked accidently before
 snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/Snakefile  \
-          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240207_config_template_earlyRT_HPV+_nopool9_batch1.yaml \
+          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240616_test_config_template.yaml \
           --unlock
 
 ## -p   partition to submit for SLURM
@@ -38,7 +38,7 @@ snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow
 
 
 snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/Snakefile \
-          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240207_config_template_earlyRT_HPV+_nopool9_batch1.yaml \
+          --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240616_test_config_template.yaml \
           --use-conda  --conda-prefix frag-pipeline \
           --cluster-config /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config/cluster_std_err.json \
           --cluster "sbatch -p himem -c 12 --mem=60G -t 12:0:0 -o {cluster.std} -e {cluster.err}" \
