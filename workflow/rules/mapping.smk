@@ -196,7 +196,7 @@ rule create_hpviewer_summary:
         # Process the temp_file to get the final output
         awk 'BEGIN{{FS=OFS="\t"}} NR==1{{header=$0; next}} 
              {{
-                 if ($4 > 150) {{
+                 if ($4 > 300) {{
                      if ($1 in max && $4 > max[$1]) {{
                          max[$1] = $4
                          line[$1] = $0
@@ -502,7 +502,7 @@ rule run_consensus_cruncher:
         consensus_output = "cc_data/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
-        python3 {config[cc_run_hg]} -c {input.ini_file} consensus -b False
+        python3 {config[cc_run_hg]} -c {input.ini_file} consensus
         """
 
 rule run_consensus_cruncher_kept:
@@ -536,20 +536,36 @@ rule get_dedup_bam_from_cc:
         cp {input.file}.bai {output.dedup_bam}.bai
         """
 
+## 20240618 
+# editing this out for the time being but will reimplement when it's necessary to do.
+# rule get_dedup_bam_from_cc_virus:
+#     input:
+#         file = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam",
+#         file_kept = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
+#     output:
+#         dedup_bam = "dedup_bam_umi_pe_shifted/{sample}_dedup.bam",
+#         #dedup_bam_unsorted = temp("dedup_bam_umi_pe_shifted/{sample}_dedup_unsorted.bam")
+#     shell:
+#         """ 
+#         samtools merge -f - {input.file} {input.file_kept} | \
+#         samtools view -b -f 2 -F 2828 - | \
+#         samtools sort -o {output.dedup_bam} -
+
+#         samtools index {output.dedup_bam}
+#         """
+
+##
+#this version just doesn't merge the samples from shifted and kept
 rule get_dedup_bam_from_cc_virus:
     input:
-        file = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam",
-        file_kept = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
+        file = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
     output:
         dedup_bam = "dedup_bam_umi_pe_shifted/{sample}_dedup.bam",
         #dedup_bam_unsorted = temp("dedup_bam_umi_pe_shifted/{sample}_dedup_unsorted.bam")
     shell:
         """ 
-        samtools merge -f - {input.file} {input.file_kept} | \
-        samtools view -b -f 2 -F 2828 - | \
-        samtools sort -o {output.dedup_bam} -
-
-        samtools index {output.dedup_bam}
+        cp {input.file} {output.dedup_bam}
+        cp {input.file}.bai {output.dedup_bam}.bai
         """
 ############################################
 ## extract spike-ins bam after deduplication
