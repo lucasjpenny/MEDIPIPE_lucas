@@ -146,6 +146,7 @@ rule hpv_viewer_repeatmasker:
         "hpv_viewer_repeatmasker/{sample}/temp/{sample}.bam",
         # temp("hpv_viewer_repeatmasker/{sample}/temp/{sample}.sam"),
         "hpv_viewer_repeatmasker/{sample}/{sample}_HPV_profile.txt",
+        temp("hpv_viewer_repeatmasker/{sample}")
     params:
         samplename = "{sample}"
     shell:

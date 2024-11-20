@@ -3,3 +3,6 @@
 .snakemake/
 ._HPVseq_pipeline
 workflow/20240127_OPC_processing_info/*
+workflow/dependencies/ConsensusCruncher_toRemove_fromGit/*
+workflow/TEST/*
+workflow/testing/*
