@@ -1,144 +1,10 @@
 import json
 
-################
-## BWA alignment
-################
-# this is to get the human output
-rule bwa_map:
-    priority: 10
-    input:
-        #config["bwa_index"],
-        get_bwa_index(),
-        get_trimmed_fastq,
-        genotype_dir=lambda wildcards: get_genotype_dir_from_sample_hg(wildcards.sample)
-    output:
-        temp("raw_bam/{sample}.bam")
-        # "raw_bam/{sample}.bam"
-    threads: 12
-    log:
-        "logs/{sample}_bwa_map.log"
-    shell:
-        "(bwa mem -M -t {threads} {input.genotype_dir} {input[1]} {input[2]} | "
-        "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} {input[0]} - | "
-        "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
-        #" samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
-        # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
-        "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
+###############
+# HPViewer
+###############
 
-REF = pd.read_csv(config["ref_files"], sep="\t", header = None, index_col = 0)
-
-def get_sample_ids_from_checkpoint(wildcards):
-    # Wait for the checkpoint to be ready and get its output
-    hpvviewer_json = checkpoints.extract_hpviewer_summary.get(**wildcards).output[0]
-    with open(hpvviewer_json, 'r') as file:
-        samples_dict = json.load(file)
-    # Extract the sample IDs
-    sample_ids = list(samples_dict.keys())
-    return sample_ids
-
-def get_genotype_dir_from_sample(sample_id):
-    # Path to the JSON file produced by the checkpoint
-    json_file_path = checkpoints.extract_hpviewer_summary.get().output[0]
-    
-    # Read the JSON file
-    with open(json_file_path, 'r') as file:
-        samples_dict = json.load(file)
-    
-    # Extract the genotype for the given sample ID
-    genotype = samples_dict.get(sample_id)
-    dir = REF.loc[genotype][1]
-    return dir
-
-def get_genotype_dir_from_sample_hg(sample_id):
-    # Path to the JSON file produced by the checkpoint
-    json_file_path = checkpoints.extract_hpviewer_summary.get().output[0]
-    
-    # Read the JSON file
-    with open(json_file_path, 'r') as file:
-        samples_dict = json.load(file)
-    
-    # Extract the genotype for the given sample ID, default to "HPV16" if not found
-    genotype = samples_dict.get(sample_id, "HPV16")
-    
-    # Get the directory from the REF DataFrame
-    dir = REF.loc[genotype][1]
-    return dir
-
-rule virus_bwa_map:
-    priority: 10
-    input:
-        # Assuming get_bwa_index and get_trimmed_fastq are functions returning file paths
-        bwa_index=get_bwa_index(),
-        fastq=get_trimmed_fastq,
-        genotype_dir=lambda wildcards: get_genotype_dir_from_sample(wildcards.sample)
-    output:
-        "raw_bam_virus/{sample}.bam" #temp("raw_bam_virus/{sample}.bam")
-    params:
-        # Assuming get_genotype_dir_from_sample is a function
-    threads: 12
-    log:
-        "logs/{sample}_bwa_map.log"
-    shell:
-        "(bwa mem -M -t {threads} {input.bwa_index} {input.fastq} | "
-        "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} {input.genotype_dir} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
-        "samtools view -b -f 2 -F 2828 --threads {threads} - | " # Removes all secondary alignments
-        "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
-        "samtools index {output}) 2> {log}"
-
-rule bwa_map_fusion:
-    priority: 10
-    input:
-        #config["bwa_index"],
-        get_bwa_fusion_index(),
-        get_trimmed_fastq
-    output:
-        # temp("raw_bam/{sample}.bam")
-        "raw_bam_fusion/{sample}.bam"
-    threads: 12
-    log:
-        "logs/{sample}_bwa_map.log"
-    shell:
-        "(bwa mem -M -t {threads} {input} | "
-        "samtools view -b -f 2 -F 524 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
-        #" samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
-        # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
-        "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
-
-rule bwa_map_shifted:
-    input:
-        "raw_bam_virus/{sample}.bam"
-    output:
-        # temp("raw_bam/{sample}.bam")
-        discarded = temp("raw_bam_shifted/{sample}_discarded.bam"),
-        read_names = temp("raw_bam_shifted/{sample}_read_names.txt"),
-        temp1 = temp("raw_bam_shifted/{sample}_temp1.bam"),
-        kept = temp("raw_bam_shifted/{sample}_kept.bam"),
-        shifted = temp("raw_bam_shifted/{sample}_shifted.bam")
-    threads: 12
-    log:
-        "logs/{sample}_bwa_map_shifted.log"
-    shell:
-        """
-        samtools view -b -h {input} "gi|333031|gb|K02718.1|PPH16:1000-6000" > {output.temp1}
-
-        # Extract the read names from input.bam and write them to read_names.txt
-        samtools view {output.temp1} | awk '{{print $1}}' > {output.read_names}
-
-        # Filter the reads in input.bam using the read names in read_names.txt, write unselected reads to discarded.bam, and output the selected reads to filtered_output.bam
-        samtools view -N {output.read_names} -b {input} -U {output.discarded} -o {output.kept}
-        
-        # bam to fastq conversion then bwa mem with the shifted genome
-        samtools collate -O {output.discarded} | samtools bam2fq - |
-        bwa mem -M -p -t {threads} /cluster/home/t116306uhn/Reference/HPV_shifted_genome_4000bp/shifted.fasta - |
-        samtools view -b -f 2 -F 2828 --threads {threads} - | 
-        samtools view -Sb --threads {threads} - > {output.shifted}
-        """
-    
-
-
-rule hpv_viewer_repeatmasker:
+rule hpv_viewer:
     priority: 10
     input:
         get_trimmed_fastq
@@ -151,6 +17,11 @@ rule hpv_viewer_repeatmasker:
         samplename = "{sample}"
     shell:
         "python {config[HPViewer]} -m homology-mask -1 {input[0]} -2 {input[1]} -p {threads} -c 90 -o hpv_viewer_repeatmasker/{params.samplename}"
+
+
+###############
+# Checkpoint
+###############
 
 
 SAMPLES = (
@@ -218,6 +89,9 @@ rule create_hpviewer_summary:
         rm "$temp_file"
         """
 
+
+
+
 checkpoint extract_hpviewer_summary:
     input:
         "hpv_viewer_repeatmasker/dom_genotype_summary.tsv"
@@ -232,6 +106,129 @@ checkpoint extract_hpviewer_summary:
         # Save dictionary to a JSON file
         with open(output[0], 'w') as file:
             json.dump(samples_dict, file)
+
+
+
+def get_sample_ids_from_checkpoint(wildcards):
+    # Wait for the checkpoint to be ready and get its output
+    hpvviewer_json = checkpoints.extract_hpviewer_summary.get(**wildcards).output[0]
+    with open(hpvviewer_json, 'r') as file:
+        samples_dict = json.load(file)
+    # Extract the sample IDs
+    sample_ids = list(samples_dict.keys())
+    return sample_ids
+
+def get_genotype_dir_from_sample(sample_id):
+    # Path to the JSON file produced by the checkpoint
+    json_file_path = checkpoints.extract_hpviewer_summary.get().output[0]
+    
+    # Read the JSON file
+    with open(json_file_path, 'r') as file:
+        samples_dict = json.load(file)
+    
+    # Extract the genotype for the given sample ID
+    genotype = samples_dict.get(sample_id)
+    dir = REF.loc[genotype][1]
+    return dir
+
+def get_genotype_dir_from_sample_hg(sample_id):
+    # Path to the JSON file produced by the checkpoint
+    json_file_path = checkpoints.extract_hpviewer_summary.get().output[0]
+    
+    # Read the JSON file
+    with open(json_file_path, 'r') as file:
+        samples_dict = json.load(file)
+    
+    # Extract the genotype for the given sample ID, default to "HPV16" if not found
+    genotype = samples_dict.get(sample_id, "HPV16")
+    
+    # Get the directory from the REF DataFrame
+    dir = REF.loc[genotype][1]
+    return dir
+
+
+
+################
+## BWA alignment
+################
+# this is to get the human output
+rule bwa_map:
+    priority: 10
+    input:
+        #config["bwa_index"],
+        get_bwa_index(),
+        get_trimmed_fastq,
+        genotype_dir=lambda wildcards: get_genotype_dir_from_sample_hg(wildcards.sample)
+    output:
+        temp("raw_bam/{sample}.bam")
+        # "raw_bam/{sample}.bam"
+    threads: 12
+    log:
+        "logs/{sample}_bwa_map.log"
+    shell:
+        "(bwa mem -M -t {threads} {input.genotype_dir} {input[1]} {input[2]} | "
+        "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
+        "bwa mem -M -p -t {threads} {input[0]} - | "
+        "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
+        #" samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
+        # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
+        "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
+
+REF = pd.read_csv(config["ref_files"], sep="\t", header = None, index_col = 0)
+
+rule virus_bwa_map:
+    priority: 10
+    input:
+        # Assuming get_bwa_index and get_trimmed_fastq are functions returning file paths
+        bwa_index=get_bwa_index(),
+        fastq=get_trimmed_fastq,
+        genotype_dir=lambda wildcards: get_genotype_dir_from_sample(wildcards.sample)
+    output:
+        "raw_bam_virus/{sample}.bam" #temp("raw_bam_virus/{sample}.bam")
+    params:
+        # Assuming get_genotype_dir_from_sample is a function
+    threads: 12
+    log:
+        "logs/{sample}_bwa_map.log"
+    shell:
+        "(bwa mem -M -t {threads} {input.bwa_index} {input.fastq} | "
+        "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
+        "bwa mem -M -p -t {threads} {input.genotype_dir} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
+        "samtools view -b -f 2 -F 2828 --threads {threads} - | " # Removes all secondary alignments
+        "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
+        "samtools index {output}) 2> {log}"
+
+
+rule virus_bwa_map_shifted:
+    input:
+        "raw_bam_virus/{sample}.bam"
+    output:
+        # temp("raw_bam/{sample}.bam")
+        discarded = temp("raw_bam_shifted/{sample}_discarded.bam"),
+        read_names = temp("raw_bam_shifted/{sample}_read_names.txt"),
+        temp1 = temp("raw_bam_shifted/{sample}_temp1.bam"),
+        kept = temp("raw_bam_shifted/{sample}_kept.bam"),
+        shifted = temp("raw_bam_shifted/{sample}_shifted.bam")
+    threads: 12
+    log:
+        "logs/{sample}_bwa_map_shifted.log"
+    shell:
+        """
+        samtools view -b -h {input} "gi|333031|gb|K02718.1|PPH16:1000-6000" > {output.temp1}
+
+        # Extract the read names from input.bam and write them to read_names.txt
+        samtools view {output.temp1} | awk '{{print $1}}' > {output.read_names}
+
+        # Filter the reads in input.bam using the read names in read_names.txt, write unselected reads to discarded.bam, and output the selected reads to filtered_output.bam
+        samtools view -N {output.read_names} -b {input} -U {output.discarded} -o {output.kept}
+        
+        # bam to fastq conversion then bwa mem with the shifted genome
+        samtools collate -O {output.discarded} | samtools bam2fq - |
+        bwa mem -M -p -t {threads} /cluster/home/t116306uhn/Reference/HPV_shifted_genome_4000bp/shifted.fasta - |
+        samtools view -b -f 2 -F 2828 --threads {threads} - | 
+        samtools view -Sb --threads {threads} - > {output.shifted}
+        """
+    
 
         
 
@@ -308,114 +305,6 @@ rule samtools_sort_index_stats_shifted:
 
 
 
-
-##########################################################################
-## to filter out unmapped & non-uniquely mapped, not properly paired reads
-## Deduplication with markup, index and stats deduplicated file
-###########################################################################
-
-###############
-## without UMIs
-rule samtools_markdup_stats_pe:
-    input:
-        "raw_bam/{sample}_sorted.bam"
-    output:
-        bam = "dedup_bam_pe/{sample}_dedup.bam",
-        #bai = "dedup_bam/{sample}_dedup.bam.bai",
-        stat= "dedup_bam_pe/{sample}_dedup.bam.stats.txt"
-    threads: 12
-    shell:
-        "(samtools view -b -f 2 -F 2828 --threads {threads} {input} | "
-        "samtools markdup -@ {threads} -r - {output.bam} && "
-        "samtools index -@ {threads} {output.bam} && "
-        "samtools stats -@ {threads} {output.bam} > {output.stat})"
-
-## single-end filtering differ
-rule samtools_markdup_stats_se:
-    input:
-        "raw_bam/{sample}_sorted.bam"
-    output:
-        bam = "dedup_bam_se/{sample}_dedup.bam",
-        #bai = "dedup_bam/{sample}_dedup.bam.bai",
-        stat= "dedup_bam_se/{sample}_dedup.bam.stats.txt"
-    threads: 12
-    shell:
-        "(samtools view -b -F 2820 --threads {threads} {input} | "
-        "samtools markdup -@ {threads} -r - {output.bam} && "
-        "samtools index -@ {threads} {output.bam} && "
-        "samtools stats -@ {threads} {output.bam} > {output.stat})"
-
-#######################################################################################
-## with UMIs !!!!
-## Deduplication with UMI-tools, which takes both UMI and coordinates info into account
-## UMI-tools dosen't support parallel threads yet!!
-## paired-end
-# rule samtools_umi_tools_pe:
-#     input:
-#         "raw_bam/{sample}_sorted.bam"
-#     output:
-#         dedup_bam = "dedup_bam_umi_pe/{sample}_dedup.bam",
-#         bam_stat = "dedup_bam_umi_pe/{sample}_dedup.bam.stats.txt",
-#     params:
-#         tmp_bam = "dedup_bam_umi_pe/{sample}_tmp.bam",
-#         stat_prefix = "dedup_bam_umi_pe/{sample}_dedup"
-#     threads: 12
-#     log:
-#         "logs/{sample}_dedup_umi.log"
-#     shell:
-#         ## --umi-separator='_' by default, could also be ":"
-#         ## umi tools --method='unique', by default is 'directional'
-#         ##  -output-stats can slow down the processing and increase memory usage considerably
-#         #I modifed this line to filter out unmapped reads for only the HPV16 genome
-#         "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
-#         "samtools view -b -f 2 -F 2828 --threads {threads} {params.tmp_bam} > {output.dedup_bam} && "
-#         # "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
-#         "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
-#         "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
-
-rule samtools_secondary_umi_tools_pe:
-    input:
-        "raw_bam/{sample}_sorted.bam"
-    output:
-        dedup_bam = "dedup_secondary_bam_umi_pe/{sample}_dedup.bam",
-        bam_stat = "dedup_secondary_bam_umi_pe/{sample}_dedup.bam.stats.txt",
-    params:
-        tmp_bam = "dedup_secondary_bam_umi_pe/{sample}_tmp.bam",
-        stat_prefix = "dedup_secondary_bam_umi_pe/{sample}_dedup"
-    threads: 12
-    log:
-        "logs/{sample}_dedup_umi.log"
-    shell:
-        ## --umi-separator='_' by default, could also be ":"
-        ## umi tools --method='unique', by default is 'directional'
-        ##  -output-stats can slow down the processing and increase memory usage considerably
-        #I modifed this line to filter out unmapped reads for only the HPV16 genome
-        "(umi_tools dedup --paired -I {input} -S {params.tmp_bam} --umi-separator='_' --output-stats={params.stat_prefix} && "
-        "samtools view -b -f 257 -F 2572 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
-        "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
-        "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
-        "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
-
-## single-end with UMIs: different samtools filtering flags
-rule samtools_umi_tools_se:
-    input:
-        "raw_bam/{sample}_sorted.bam"
-    output:
-        dedup_bam = "dedup_bam_umi_se/{sample}_dedup.bam",
-        bam_stat = "dedup_bam_umi_se/{sample}_dedup.bam.stats.txt",
-    params:
-        tmp_bam = "dedup_bam_umi_se/{sample}_tmp.bam",
-        stat_prefix = "dedup_bam_umi_se/{sample}_dedup"
-    threads: 12
-    log:
-        "logs/{sample}_dedup_umi.log"
-    shell:
-        ## --umi-separator='_' by default, could also be ":"
-        "(umi_tools dedup -I {input} -S {params.tmp_bam} --umi-separator=':' --output-stats={params.stat_prefix} && "
-        "samtools view -b -F 2820 --threads {threads} {params.tmp_bam} > {output.dedup_bam} && "
-        # "samtools view -b -f 256 -F 2564 --threads {threads} {params.tmp_bam} > {output.dedup_bam} &&" #I added this
-        "samtools index -@ {threads} {output.dedup_bam}  && rm {params.tmp_bam} && "
-        "samtools stats -@ {threads} {output.dedup_bam} > {output.bam_stat}) 2> {log}"
 
 
 ##########################
@@ -568,28 +457,6 @@ rule get_dedup_bam_from_cc_virus:
         cp {input.file} {output.dedup_bam}
         cp {input.file}.bai {output.dedup_bam}.bai
         """
-############################################
-## extract spike-ins bam after deduplication
-############################################
-## paired-end only so far !!
-# rule samtools_spikein_sort_index_stats:
-#     input:
-#         #"raw_bam/{sample}_sorted.bam"      ## lead to ambiguous wildcards!?
-#         #"dedup_bam_pe/{sample}_dedup.bam"
-#         get_dedup_bam
-#     output:
-#         bam = "dedup_bam_spikein/{sample}_spikein.bam",
-#         stat= "dedup_bam_spikein/{sample}_spikein.bam.stats.txt"
-#     threads: 12
-#     params:
-#         spikein_chr = config["spike_in_chr"]
-#     shell:
-#         ## --threads flag failed
-#         "(samtools view  -@ {threads} -hbS {input} {params.spikein_chr} | "
-#         "samtools  sort  -@ {threads} -o {output.bam} && "
-#         "samtools  index -@ {threads} {output.bam} && "
-#         "samtools  stats -@ {threads} {output.bam} > {output.stat})"
-
 
 ############################################
 ## infer insert size for paired-end reads_qc
@@ -704,18 +571,3 @@ rule create_metrics_summary_virus:
         """
 
 
-# ## spike-ins
-# rule insert_size_spikein:
-#     input:
-#         "dedup_bam_spikein/{sample}_spikein.bam"
-#     output:
-#         txt = "fragment_size_spikein/{sample}_insert_size_metrics.txt",
-#         hist = "fragment_size_spikein/{sample}_insert_size_histogram.pdf"
-#     params:
-#         pipeline_env = env_dir
-#     log:
-#         "logs/{sample}_picard_insert_size_spikein.log"
-#     shell:
-#         "(java -jar {params.pipeline_env}/share/picard-2.26.6-0/picard.jar "
-#         "CollectInsertSizeMetrics M=0.05 I={input} O={output.txt} "
-#         "H={output.hist}) 2> {log}"
