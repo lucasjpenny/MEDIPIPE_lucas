@@ -106,44 +106,13 @@ rule extract_barcode:
 #         grep "^$qnameKey" {output.barcode_r2_fastq} | wc -l | awk '{{print "filter T R2: "$0}}' >> {output.updated_stats}
 #         """
 
-#singe-end
-rule umi_tools_extract_se:
-    input:
-        get_renamed_fastq
-    output:
-        # temp("barcoded_fq_se/{sample}.fastq.gz"),
-        "barcoded_fq_se/{sample}.fastq.gz",
-        "barcoded_fq_se/{sample}_extract.log"
-    params:
-        bcp = lambda wildcards: config["umi_pattern"]        ##  deactivate automatic wildcard expansion of {}
-    shell:
-        "umi_tools extract --extract-method=regex "
-        "--stdin={input[0]} --bc-pattern={params.bcp} "
-        "--stdout={output[0]}  --log={output[1]}"
-
 
 ###################################
 ### automatically trimming adapters
 ### -q 20  Quality gz_trimming
 ### mimimal length : 20 nt
 ###################################
-#for single-end reads
-rule trim_galore_se:
-    input:
-        get_fastq_4trim
-    output:
-        "trimmed_fq/{sample}_trimmed.fq.gz",
-        # temp("trimmed_fq/{sample}_trimmed.fq.gz"),
-        "trimmed_fq/{sample}.fastq.gz_trimming_report.txt",
-    params:
-        ## path needs to be full path: failed to recognize space
-        path = work_dir + "/trimmed_fq"
-    threads: 12
-    log:
-        "logs/{sample}_trim_galore_se.log"
-    shell:
-        "(trim_galore -q 20 --stringency 3 --length 20 "
-        "--cores {threads} -o {params.path} {input}) 2> {log}"
+
 
 #for paired-end reads
 rule trim_galore_pe:

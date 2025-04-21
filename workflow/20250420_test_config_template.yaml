@@ -6,12 +6,12 @@
 ## PATH for pipeline and working diretor
 ## for enclosed packages failed to be autimatically installed by conda, like MEDStrand
 pipe_dir: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow         # Full PATH to the MEDIPIPE packe
-work_dir: /cluster/projects/scottgroup/people/lucas/updated_hpvseq_test       # allowing submit
+work_dir: /cluster/projects/scottgroup/people/lucas/20250420_updated_hpvseq_test       # allowing submit
 
 #################################
 ## Samples Sequencing information
 ## Make sure using the full PATH of FASTQ files in the sample.tsv!!
-samples: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20240616_test_samples.txt
+samples: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20250420_test_samples.txt
 paired-end: True
 frag_profile: False      ## True for paired-end reads only
 
@@ -20,7 +20,7 @@ aggregate: False       ## True or False
 samples_aggr: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/sample_aggr_template.tsv  ## all samples with group info to be aggregated
 
 ## HPV Genotype Dir
-hpv_dir: /cluster/projects/scottgroup/people/lucas/Reference/bwa_HPVs/
+hpv_dir: /cluster/projects/scottgroup/people/lucas/Reference/bwa_HPVs
 
 
 ######################

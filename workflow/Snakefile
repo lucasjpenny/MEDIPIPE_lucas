@@ -1,3 +1,5 @@
+ruleorder: bwa_map > samtools_sort_index_stats
+
 #######################
 ## loading rule modules
 # include: "rules/extra_env.smk"         ## chekc & install all extra env

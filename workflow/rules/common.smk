@@ -76,7 +76,7 @@ def get_rule_all_input():
     # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
     # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = get_sample_ids_from_checkpoint()),
 
-    return  fq_qc + frag_size + frag_agg + hpv_viewer_repeatmasker  + frag_agg_virus #+ shift_dedup #haven't implemented shifted yet
+    return   frag_agg_virus #+ fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
@@ -209,6 +209,7 @@ def get_raw_fastq_pe_R2(wildcards):
         return ""
 
 
+
 #######################################################
 ##  get renamed fastq for FASQC and barcode extraction
 def get_renamed_fastq(wildcards):
@@ -218,6 +219,45 @@ def get_renamed_fastq(wildcards):
         return R1 + R2
     else:
         return "renamed_fq/{}.fastq.gz".format(wildcards.sample)
+
+
+#####################################################
+## Get the HPV genotype (detected from Jingfeng's code)
+
+def get_sample_hpv_genotype(sample):
+    if config["paired-end"]:
+        genotype = SAMPLES.loc[sample]["HPV_genotype"]
+        return f"{config['hpv_dir']}/{genotype}.fasta"
+    else:
+        return ""
+
+
+def get_sample_hpv_genotype_shifted(sample):
+    """sample is just a plain Python string, e.g. "OPC_Pool-1_14_S14_L001"."""
+    if config["paired-end"]:
+        genotype = SAMPLES.loc[sample, "HPV_genotype"]
+        return f"{config['hpv_dir']}/{genotype}L1toE1.fasta"
+    else:
+        return ""
+
+
+
+def get_sample_hpv_info_shifted(sample):
+    import os
+
+    genotype = SAMPLES.loc[sample]["HPV_genotype"]
+    fasta_path = os.path.join(config["hpv_dir"], f"{genotype}.fasta")
+
+    with open(fasta_path, "r") as f:
+        first_line = f.readline().strip()
+        if first_line.startswith(">"):
+            fasta_header = first_line[1:].split(" ")[0]  # remove '>' and take up to first space
+        else:
+            raise ValueError(f"FASTA file {fasta_path} doesn't start with a proper header line")
+
+    region = f"{fasta_header}:1000-6000"
+    return region
+
 
 
 ################################################
@@ -309,16 +349,6 @@ def get_dedup_bam_stats():
     else:
         return expand("dedup_bam_se/{samples}_dedup.bam.stats.txt", samples = SAMPLES_AGGR["sample_id"])
 
-
-#########################
-## get spikeins bam stats
-def get_spikein_stats():
-    if config["spike_in"] and config["paired-end"]:
-        bam_stats = expand("dedup_bam_spikein/{samples}_spikein.bam.stats.txt", samples = SAMPLES_AGGR["sample_id"]),
-        frag_stats = expand("fragment_size_spikein/{samples}_insert_size_metrics.txt", samples = SAMPLES_AGGR["sample_id"]),
-        return bam_stats + frag_stats
-    else:
-        return ""
 
 
 ############################

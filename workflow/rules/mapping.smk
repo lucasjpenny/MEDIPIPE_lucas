@@ -109,14 +109,7 @@ checkpoint extract_hpviewer_summary:
 
 
 
-def get_sample_ids_from_checkpoint(wildcards):
-    # Wait for the checkpoint to be ready and get its output
-    hpvviewer_json = checkpoints.extract_hpviewer_summary.get(**wildcards).output[0]
-    with open(hpvviewer_json, 'r') as file:
-        samples_dict = json.load(file)
-    # Extract the sample IDs
-    sample_ids = list(samples_dict.keys())
-    return sample_ids
+
 
 def get_genotype_dir_from_sample(sample_id):
     # Path to the JSON file produced by the checkpoint
@@ -155,24 +148,24 @@ def get_genotype_dir_from_sample_hg(sample_id):
 rule bwa_map:
     priority: 10
     input:
-        #config["bwa_index"],
-        get_bwa_index(),
-        get_trimmed_fastq,
-        genotype_dir=lambda wildcards: get_genotype_dir_from_sample_hg(wildcards.sample)
+        # Assuming get_bwa_index and get_trimmed_fastq are functions returning file paths
+        bwa_index=get_bwa_index(),
+        fastq=get_trimmed_fastq,
+        genotype_dir=lambda wildcards: get_sample_hpv_genotype(wildcards.sample)
     output:
-        temp("raw_bam/{sample}.bam")
-        # "raw_bam/{sample}.bam"
+        "raw_bam/{sample}.bam" #temp("raw_bam_virus/{sample}.bam")
+    params:
+        # Assuming get_genotype_dir_from_sample is a function
     threads: 12
     log:
-        "logs/{sample}_bwa_map.log"
+        "logs/{sample}_bwa_map_vir.log"
     shell:
-        "(bwa mem -M -t {threads} {input.genotype_dir} {input[1]} {input[2]} | "
+        "(bwa mem -M -t {threads} {input.genotype_dir} {input.fastq} | "
         "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} {input[0]} - | "
-        "samtools view -b -f 2 -F 2828 --threads {threads} - | " #this is removing all the secondary alignment, just keep in mind
-        #" samtools view -b -f 4 - | samtools sort - | samtools bam2fq - | "
-        # "bwa mem -M -p -t {threads} /cluster/projects/scottgroup/people/jinfeng/HPV-seq/bwa_HPVs/HPV16.fasta - |"
-        "samtools view -Sb --threads {threads} - > {output}) 2> {log}"
+        "bwa mem -M -p -t {threads} {input.bwa_index} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
+        "samtools view -b -f 2 -F 2828 --threads {threads} - | " # Removes all secondary alignments
+        "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
+        "samtools index {output}) 2> {log}"
 
 REF = pd.read_csv(config["ref_files"], sep="\t", header = None, index_col = 0)
 
@@ -182,7 +175,7 @@ rule virus_bwa_map:
         # Assuming get_bwa_index and get_trimmed_fastq are functions returning file paths
         bwa_index=get_bwa_index(),
         fastq=get_trimmed_fastq,
-        genotype_dir=lambda wildcards: get_genotype_dir_from_sample(wildcards.sample)
+        genotype_dir=lambda wildcards: get_sample_hpv_genotype(wildcards.sample)
     output:
         "raw_bam_virus/{sample}.bam" #temp("raw_bam_virus/{sample}.bam")
     params:
@@ -201,7 +194,7 @@ rule virus_bwa_map:
 
 rule virus_bwa_map_shifted:
     input:
-        "raw_bam_virus/{sample}.bam"
+        "raw_bam_virus/{sample}.bam",
     output:
         # temp("raw_bam/{sample}.bam")
         discarded = temp("raw_bam_shifted/{sample}_discarded.bam"),
@@ -209,12 +202,16 @@ rule virus_bwa_map_shifted:
         temp1 = temp("raw_bam_shifted/{sample}_temp1.bam"),
         kept = temp("raw_bam_shifted/{sample}_kept.bam"),
         shifted = temp("raw_bam_shifted/{sample}_shifted.bam")
+    params:
+        # now these live under params, not input
+        genotype_dir_shifted = lambda wc: get_sample_hpv_genotype_shifted(wc.sample),
+        genotype_region         = lambda wc: get_sample_hpv_info_shifted(wc.sample)
     threads: 12
     log:
         "logs/{sample}_bwa_map_shifted.log"
     shell:
         """
-        samtools view -b -h {input} "gi|333031|gb|K02718.1|PPH16:1000-6000" > {output.temp1}
+        samtools view -b -h {input} "{params.genotype_region}" > {output.temp1}
 
         # Extract the read names from input.bam and write them to read_names.txt
         samtools view {output.temp1} | awk '{{print $1}}' > {output.read_names}
@@ -224,7 +221,8 @@ rule virus_bwa_map_shifted:
         
         # bam to fastq conversion then bwa mem with the shifted genome
         samtools collate -O {output.discarded} | samtools bam2fq - |
-        bwa mem -M -p -t {threads} /cluster/home/t116306uhn/Reference/HPV_shifted_genome_4000bp/shifted.fasta - |
+        
+        bwa mem -M -p -t {threads} {params.genotype_dir_shifted} - |
         samtools view -b -f 2 -F 2828 --threads {threads} - | 
         samtools view -Sb --threads {threads} - > {output.shifted}
         """
@@ -252,10 +250,12 @@ rule samtools_sort_index_stats:
         # "samtools sort  -@ {threads} -o {output[0]} && "
         # "samtools index -@ {threads} {output[0]} && "
         # "samtools stats -@ {threads} {output[0]} > {output[1]})"
-        "samtools fixmate {input} - | "
+        "samtools sort -n -@ {threads} -o - {input} |"
+        "samtools fixmate - - | "
         "samtools sort -@ {threads} -o {output[0]} && "
         "samtools index -@ {threads} {output[0]} && "
         "samtools stats -@ {threads} {output[0]} > {output[1]}"
+
 
 rule samtools_sort_index_stats_virus_kept:
     input:
@@ -328,7 +328,7 @@ rule create_ini_file:
         name = {params.samplename}
         bwa = /cluster/tools/software/bwa/0.7.15/bwa
         ref = bwa_ref
-        samtools = /cluster/tools/software/samtools/1.9/bin/samtools
+        samtools = /cluster/tools/software/rocky9/samtools/1.20/bin/samtools
         bpattern = NNT
         [consensus]
         bam = {input}
@@ -352,7 +352,7 @@ rule create_ini_file_shifted:
         name = {params.samplename}
         bwa = /cluster/tools/software/bwa/0.7.15/bwa
         ref = bwa_ref
-        samtools = /cluster/tools/software/samtools/1.9/bin/samtools
+        samtools = /cluster/tools/software/rocky9/samtools/1.20/bin/samtools
         bpattern = NNT
         [consensus]
         bam = {input}
@@ -376,7 +376,7 @@ rule create_ini_file_kept:
         name = {params.samplename}
         bwa = /cluster/tools/software/bwa/0.7.15/bwa
         ref = bwa_ref
-        samtools = /cluster/tools/software/samtools/1.9/bin/samtools
+        samtools = /cluster/tools/software/rocky9/samtools/1.20/bin/samtools
         bpattern = NNT
         [consensus]
         bam = {input}
@@ -426,37 +426,36 @@ rule get_dedup_bam_from_cc:
         cp {input.file}.bai {output.dedup_bam}.bai
         """
 
-## 20240618 
-# editing this out for the time being but will reimplement when it's necessary to do.
-# rule get_dedup_bam_from_cc_virus:
-#     input:
-#         file = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam",
-#         file_kept = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
-#     output:
-#         dedup_bam = "dedup_bam_umi_pe_shifted/{sample}_dedup.bam",
-#         #dedup_bam_unsorted = temp("dedup_bam_umi_pe_shifted/{sample}_dedup_unsorted.bam")
-#     shell:
-#         """ 
-#         samtools merge -f - {input.file} {input.file_kept} | \
-#         samtools view -b -f 2 -F 2828 - | \
-#         samtools sort -o {output.dedup_bam} -
 
-#         samtools index {output.dedup_bam}
-#         """
-
-##
-#this version just doesn't merge the samples from shifted and kept
 rule get_dedup_bam_from_cc_virus:
     input:
-        file = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
+        file = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam",
+        file_kept = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
     output:
         dedup_bam = "dedup_bam_umi_pe_shifted/{sample}_dedup.bam",
         #dedup_bam_unsorted = temp("dedup_bam_umi_pe_shifted/{sample}_dedup_unsorted.bam")
     shell:
         """ 
-        cp {input.file} {output.dedup_bam}
-        cp {input.file}.bai {output.dedup_bam}.bai
+        samtools merge -f - {input.file} {input.file_kept} | \
+        samtools view -b -f 2 -F 2828 - | \
+        samtools sort -o {output.dedup_bam} -
+
+        samtools index {output.dedup_bam}
         """
+
+## 20240420 
+# # editing this out for the time being but will reimplement when it's necessary to do.
+# rule get_dedup_bam_from_cc_virus:
+#     input:
+#         file = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
+#     output:
+#         dedup_bam = "dedup_bam_umi_pe_shifted/{sample}_dedup.bam",
+#         #dedup_bam_unsorted = temp("dedup_bam_umi_pe_shifted/{sample}_dedup_unsorted.bam")
+#     shell:
+#         """ 
+#         cp {input.file} {output.dedup_bam}
+#         cp {input.file}.bai {output.dedup_bam}.bai
+#         """
 
 ############################################
 ## infer insert size for paired-end reads_qc
@@ -473,9 +472,18 @@ rule insert_size:
     log:
         "logs/{sample}_picard_insert_size.log"
     shell:
-        "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
-        "CollectInsertSizeMetrics M=0.01 I={input} O={output.txt} "
-        "H={output.hist}) 2> {log}"
+         r"""
+        set -euo pipefail
+        module load R
+
+        java -jar /cluster/tools/software/picard/2.10.9/picard.jar \
+            CollectInsertSizeMetrics \
+            M=0.01 \
+            I={input} \
+            O={output.txt} \
+            H={output.hist} \
+        2> {log}
+        """
 
 rule insert_size_virus:
     input:
@@ -489,9 +497,18 @@ rule insert_size_virus:
     log:
         "logs/{sample}_picard_insert_size_virus.log"
     shell:
-        "(java -jar /cluster/tools/software/picard/2.10.9/picard.jar "
-        "CollectInsertSizeMetrics M=0.01 I={input} O={output.txt} "
-        "H={output.hist}) 2> {log}"
+         r"""
+        set -euo pipefail
+        module load R
+
+        java -jar /cluster/tools/software/picard/2.10.9/picard.jar \
+            CollectInsertSizeMetrics \
+            M=0.01 \
+            I={input} \
+            O={output.txt} \
+            H={output.hist} \
+        2> {log}
+        """
 
 
 
@@ -536,7 +553,7 @@ rule create_metrics_summary:
 
 rule create_metrics_summary_virus:
     input:
-        metrics_files=lambda wildcards: expand("fragment_size_virus/{sample}_insert_size_metrics.txt", sample=get_sample_ids_from_checkpoint(wildcards))
+        metrics_files=expand("fragment_size_virus/{sample}_insert_size_metrics.txt", sample=SAMPLES["sample_id"])
     output:
         outfile= "fragment_size_virus/fragment_length_summary.csv"
     params:
