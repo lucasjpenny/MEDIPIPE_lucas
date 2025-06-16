@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -p all              ## Specify SLURM partition for job submssion
-#SBATCH -t 2-00:00:00
+#SBATCH -t 0-10:00 # been so long:00:00
 #SBATCH --mem=5G
 #SBATCH -J submit_snakemake_%j
 #SBATCH -o submit_snakemake_%j.out
@@ -17,7 +17,7 @@ module load samtools
 module load picard/2.10.9
 module load bwa
 # module load bedtools/2.27.1
-# module load R
+module load R/4.2.1
 module load fastqc
 module load bowtie2
 
@@ -46,7 +46,7 @@ snakemake --snakefile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow
           --configfile /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/20250420_test_config_template.yaml \
           --use-conda  --conda-prefix frag-pipeline \
           --cluster-config /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/config/cluster_std_err.json \
-          --cluster "sbatch -p himem -c 12 --mem=60G -t 12:0:0 -o {cluster.std} -e {cluster.err}" \
+          --cluster "sbatch -p all -c 2 --mem=6G -t 1:0:0 -o {cluster.std} -e {cluster.err}" \
           --latency-wait 60 --jobs 50 -p --rerun-incomplete #--dry-run --dag | dot -Tsvg > dag.svg
 
 # conda deactivate

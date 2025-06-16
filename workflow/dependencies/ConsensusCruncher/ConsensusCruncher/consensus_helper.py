@@ -513,22 +513,42 @@ def consensus_flag(bam_reads):
     In this example, location and insert size are exactly the same. Take 99 as consensus flag for first 2 reads, and
     147 for second.
     """
+    """
+    Correct flag (jfz) June, 2022
+    Multiple max flag for DCS (one pos read1 vs one neg read2 or one pos read2 vs one neg read1):
+    1. Change order of 99, 83, 147, 163 to 99, 147, 163, 83
+    2. For flag not in [99, 147, 163, 83]:
+      i) when flags include pos read1/neg read2 or pos read2/neg read1, the flag will be minimum or maximum. This is similar as changing the priority of 83 in criterion 1.
+      ii) if strand==None or read==None, random selecting one
+    """
     # Rank flags by number of occurrences
     count_flags = collections.Counter(i.flag for i in bam_reads).most_common()  # [(97, 1), (99, 1)]
     # List all flags with max count (will show multiple if there's a tie for the max count)
     max_flag = [i for i, j in count_flags if j == count_flags[0][1]]
 
+    # jfz: changed the order from [99, 83, 147, 163] to [99, 147, 163, 83]
     if len(max_flag) != 1:
         if 99 in max_flag:
             flag = 99
-        elif 83 in max_flag:
-            flag = 83
+        #elif 83 in max_flag:
+        #    flag = 83
         elif 147 in max_flag:
             flag = 147
         elif 163 in max_flag:
             flag = 163
+        elif 83 in max_flag:
+            flag = 83
         else:
             flag = max_flag[randint(0, len(max_flag)-1)]  # If flag not properly paired/mapped, randomly select from max
+            if len(max_flag)==2: # for DCS
+                strands = [which_strand(i) for i in bam_reads]
+                if 'pos' in strands and 'neg' in strands:
+                    reads = [which_read(i.flag) for i in bam_reads]
+                    strands_reads = ['_'.join([str(strand), str(read)]) for strand, read in zip(strands, reads)]
+                    if 'pos_R1' in strands_reads and 'neg_R2' in strands_reads:
+                        flag = min(max_flag)
+                    if 'pos_R2' in strands_reads and 'neg_R1'in strands_reads:
+                        flag = max(max_flag)
     else:
         flag = max_flag[0]
 

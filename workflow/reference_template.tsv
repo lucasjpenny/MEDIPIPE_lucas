@@ -1,7 +1,5 @@
 genome_name	BSgenome.Hsapiens.UCSC.hg19
 bwa_index	/cluster/tools/data/genomes/human/hg19/bwa/ucsc.hg19.fasta
-fusion_index	/cluster/home/t116306uhn/Reference/genome_reference/hg_hpv16_combined_genome.fa
-shifted	/cluster/home/t116306uhn/Reference/HPV_shifted_genome_4000bp/shifted.fasta
 bwa_index_spikein	NA
 blacklist	/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/test/Reference/blacklist.bed
 HPV11	/cluster/projects/scottgroup/people/lucas/bwa_HPVs/lucas/HPV11.fasta

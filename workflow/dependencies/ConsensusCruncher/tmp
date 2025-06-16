@@ -1,0 +1,12 @@
+    :returns: Path to sorted BAM file.
+    sorted_bam = '{}.sorted.bam'.format(identifier)
+    sam2 = Popen((samtools + ' sort -').split(' '), stdin=sam1.stdout, stdout=open(sorted_bam, 'w'))
+    call("{} index {}".format(samtools, sorted_bam).split(' '))
+    return sorted_bam
+                 stdout=open('{}/{}.sorted.bam'.format(bam_dir, filename), 'w'))
+    call("{} index {}/{}.sorted.bam".format(args.samtools, bam_dir, filename).split(' '))
+        os.remove('{}/dcs/{}.sscs.singleton.sorted.bam.bai'.format(sample_dir, identifier))
+            os.remove('{}/sscs_sc/{}.singleton.correction.sorted.bam.bai'.format(sample_dir, identifier))
+            os.remove('{}/sscs_sc/{}.sscs.correction.sorted.bam.bai'.format(sample_dir, identifier))
+            os.remove('{}/sscs_sc/{}.uncorrected.sorted.bam.bai'.format(sample_dir, identifier))
+            os.remove('{}/dcs_sc/{}.sscs.sc.singleton.sorted.bam.bai'.format(sample_dir, identifier))

@@ -28,7 +28,7 @@ hpv_dir: /cluster/projects/scottgroup/people/lucas/Reference/bwa_HPVs
 ## ConsensusCruncher
 cc_extract : "/cluster/home/t116306uhn/Reference/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py"
 cc_run_hg: "/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher/ConsensusCruncher.py"
-cc_run_hpv: "/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher_HPV16/ConsensusCruncher.py"
+cc_run_hpv: "/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/dependencies/ConsensusCruncher/ConsensusCruncher.py"
 
 ## HPViewer
 HPViewer : "/cluster/home/t116306uhn/Reference/HPViewer/HPViewer.py"

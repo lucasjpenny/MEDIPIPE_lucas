@@ -1,0 +1,1 @@
+SSCS_maker.py:        stat_file.write('family_size\tfrequency\n')

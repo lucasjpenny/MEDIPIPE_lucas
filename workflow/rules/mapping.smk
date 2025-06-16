@@ -154,15 +154,13 @@ rule bwa_map:
         genotype_dir=lambda wildcards: get_sample_hpv_genotype(wildcards.sample)
     output:
         "raw_bam/{sample}.bam" #temp("raw_bam_virus/{sample}.bam")
-    params:
-        # Assuming get_genotype_dir_from_sample is a function
     threads: 12
     log:
         "logs/{sample}_bwa_map_vir.log"
     shell:
         "(bwa mem -M -t {threads} {input.genotype_dir} {input.fastq} | "
         "samtools view -b -f 4 - | samtools collate -O - | samtools bam2fq - | "
-        "bwa mem -M -p -t {threads} {input.bwa_index} - | " # Assuming get_genotype_dir_from_sample returns an index or directory
+        "bwa mem -M -p -t {threads} {input.bwa_index} - | " 
         "samtools view -b -f 2 -F 2828 --threads {threads} - | " # Removes all secondary alignments
         "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
         "samtools index {output}) 2> {log}"
@@ -211,20 +209,21 @@ rule virus_bwa_map_shifted:
         "logs/{sample}_bwa_map_shifted.log"
     shell:
         """
-        samtools view -b -h {input} "{params.genotype_region}" > {output.temp1}
+        # Get all read names that overlap the region
+        samtools view {input} "{params.genotype_region}" | awk '{{print $1}}' | sort | uniq > {output.read_names}
 
-        # Extract the read names from input.bam and write them to read_names.txt
-        samtools view {output.temp1} | awk '{{print $1}}' > {output.read_names}
+        # Extract both reads in each pair
+        samtools view -N {output.read_names} -b -h {input} -o {output.temp1}
 
-        # Filter the reads in input.bam using the read names in read_names.txt, write unselected reads to discarded.bam, and output the selected reads to filtered_output.bam
+        # Separate kept and discarded reads
         samtools view -N {output.read_names} -b {input} -U {output.discarded} -o {output.kept}
-        
+
         # bam to fastq conversion then bwa mem with the shifted genome
         samtools collate -O {output.discarded} | samtools bam2fq - |
-        
         bwa mem -M -p -t {threads} {params.genotype_dir_shifted} - |
         samtools view -b -f 2 -F 2828 --threads {threads} - | 
         samtools view -Sb --threads {threads} - > {output.shifted}
+
         """
     
 
@@ -438,8 +437,7 @@ rule get_dedup_bam_from_cc_virus:
         """ 
         samtools merge -f - {input.file} {input.file_kept} | \
         samtools view -b -f 2 -F 2828 - | \
-        samtools sort -o {output.dedup_bam} -
-
+        samtools sort -o {output.dedup_bam} - && \
         samtools index {output.dedup_bam}
         """
 
@@ -587,4 +585,97 @@ rule create_metrics_summary_virus:
         done
         """
 
+
+
+##################################
+# END MOTIF
+#####################################
+
+
+rule end_motif_prep:
+    input:
+        sorted_bam =  "dedup_bam_umi_pe_shifted/{sample}_dedup.bam"
+    output:
+        bedpe = "end_motif/{sample}.bedpe"
+    params:
+        mapq=30
+    resources: cpus=1, mem_mb=1500, time_min=60
+    shell:
+        """
+        samtools sort -n {input.sorted_bam} -o temp_sorted_{wildcards.sample}.bam
+        samtools view -bf 0x2 -q {params.mapq} temp_sorted_{wildcards.sample}.bam | \
+        bedtools bamtobed -i stdin -bedpe > {output.bedpe}
+        rm temp_sorted_{wildcards.sample}.bam
+        """
+
+rule run_rscript_motif_format:
+    input:
+        bedpe = "end_motif/{sample}.bedpe"
+    output:
+        fasta_5= temp( "end_motif/" + "{sample}_fasta_5.bed"),
+        fasta_3= temp( "end_motif/" + "{sample}_fasta_3.bed")
+    params:
+        script = config["pipe_dir"] + "/scripts/motif_format_bedpe_hpv.R"
+    resources: cpus=1, mem_mb=1500, time_min=60
+    shell:
+        "Rscript {params.script} "
+        "--id {wildcards.sample} "
+        "--bedpe {input.bedpe} "
+        "--outdir end_motif"
+
+
+rule compute_endMotif:
+    input:
+        bed3 = "end_motif/{sample}_fasta_3.bed",
+        bed5 = "end_motif/{sample}_fasta_5.bed"
+    output:
+        fasta_out3 = "end_motif/{sample}_fasta_3_annotated.bed",
+        fasta_out5 = "end_motif/{sample}_fasta_5_annotated.bed"
+    params:
+        genome_ref = lambda wildcards: get_sample_hpv_genotype(wildcards.sample)
+    resources: cpus=1, mem_mb=1500, time_min=60
+    shell:
+        "bedtools getfasta -bedOut -fi {params.genome_ref} -bed {input.bed3} > {output.fasta_out3};"
+        "bedtools getfasta -bedOut -fi {params.genome_ref} -bed {input.bed5} > {output.fasta_out5}"
+
+rule run_rscript_motif_get_contexts:
+    input:
+        fasta_5=lambda wildcards:  "end_motif/" + wildcards.sample + "_fasta_5_annotated.bed",
+        fasta_3=lambda wildcards:  "end_motif/" + wildcards.sample + "_fasta_3_annotated.bed"
+    output:
+        final_output =  "end_motif/{sample}_motifs.txt",
+        final_output2 =  "end_motif/{sample}_raw.txt",
+        final_output3 =  "end_motif/{sample}_MDS.txt"
+    params:
+        script = config["pipe_dir"] + "/scripts/motif_get_contexts.R"
+    resources: cpus=1, mem_mb=1500, time_min=60
+    shell:
+        "Rscript {params.script} "
+        "--id {wildcards.sample} "
+        "--fasta_5 {input.fasta_5} "
+        "--fasta_3 {input.fasta_3} "
+        "--outdir end_motif"
+
+
+rule MDS_summary:
+    input:
+        expand( "end_motif/{sample}_MDS.txt", sample=SAMPLES["sample_id"])
+    output:
+         "end_motif/MDS_scores.txt" 
+    resources: cpus=1, mem_mb=1000, time_min=5
+    shell:
+        """
+        for file in {input}; do
+            sample=$(basename $file _MDS.txt)
+            value=$(sed -n '2p' $file)
+            echo "$sample $value" >> {output}
+        done
+        """
+
+
+
+
+#####################################
+# Coverage
+#####################################
 

@@ -12,7 +12,6 @@ This pipeline requires the following dependencies:
 
 | Program | Version | Purpose                                    |
 | ------- | ------- | ------------------------------------------ |
-| [picrd](https://broadinstitute.github.io/picard/)| picard/1.9.1 or higher | Adding read group @RG in the alignment files |  
 | [Python](https://www.python.org/) | 3.5.1   | Run ConsensusCruncher                |
 | [BWA](http://bio-bwa.sourceforge.net/) | 0.7.15   | Align reads                |
 | [Samtools](http://samtools.sourceforge.net/)| 1.3.1   | Sorting and indexing bamfiles              |
@@ -95,7 +94,7 @@ files containing all unique molecules (a.k.a. no duplicates) are created for SSC
 and DCS.
 
 ## Multiple files ##
-[script generator](https://github.com/pughlab/ConsensusCruncher/blob/master/generate_scripts.sh) will create sh scripts for each file in a fastq directory. 
+[script generator](https://github.com/pughlab/ConsensusCruncher/tree/master/test/bash_scripts/generate_scripts.sh) will create sh scripts for each file in a fastq directory. 
 1) The following parameters need to be changed in the config file: name, bwa, ref, samtools, bpattern (alternatively if a barcode list is used instead, remove bpattern and add blist as parameter). Please note: fastq1, fastq2, output, bam, and c_output can be ignored as those will be updated using the generate_scripts.sh file.
 2) Update generate_scripts.sh with input, output, and code_dir.
 3) Run generate_scripts.sh to create sh files and then run those scripts.

@@ -73,10 +73,11 @@ def get_rule_all_input():
     fusion_raw = expand("raw_bam_fusion/{samples}.bam", samples = SAMPLES["sample_id"]),
     frag_agg =  expand("fragment_size/fragment_length_summary.csv"),
     frag_agg_virus =  expand("fragment_size_virus/fragment_length_summary.csv"),
+    end_motif_summary = expand("end_motif/MDS_scores.txt"),
     # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
     # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = get_sample_ids_from_checkpoint()),
 
-    return   frag_agg_virus #+ fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
+    return   frag_agg_virus + end_motif_summary#+ fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
@@ -255,7 +256,7 @@ def get_sample_hpv_info_shifted(sample):
         else:
             raise ValueError(f"FASTA file {fasta_path} doesn't start with a proper header line")
 
-    region = f"{fasta_header}:1000-6000"
+    region = f"{fasta_header}:3000-5000"
     return region
 
 

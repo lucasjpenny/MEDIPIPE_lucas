@@ -62,29 +62,13 @@ def check_overlap(blist):
     >>> check_overlap(['AACTCT', 'AACT'])
     True
     """
-    blist = list(set(blist))
-    print(blist)
     overlap = False
+
     for barcode in blist:
-        print("Barcode is", barcode)
-        over = [i for i in blist if barcode in i]
-        
-        if len(over) == 1:
-            print("No other barcode contains ", barcode, ". No Overlap")
-        if len(over) > 1:
-            print(barcode, "Is contained in ", over)
-            
-            m= (min(over, key=len))
-            print(m)
-            over.remove(m)
-            print(over)
-            for item in over:
-                if item[:len(m)] == m:
-                    overlap= True
-                    print( "There is overlapping barcodes")
-                else:
-                    print(item, "Does not start with ", barcode, ". No Overlap")
- 
+        if sum([barcode in b for b in blist]) > 1:
+            overlap = True
+
+    return overlap
 
 
 def find_all(a_str, sub):
@@ -161,8 +145,10 @@ def main():
         read1 = SeqIO.parse(gzopen(args.read1, "rt"), "fastq")
         read2 = SeqIO.parse(gzopen(args.read2, "rt"), "fastq")
     else:
-        read1 = SeqIO.parse(open(args.read1, "rU"), "fastq")
-        read2 = SeqIO.parse(open(args.read2, "rU"), "fastq")
+        #read1 = SeqIO.parse(open(args.read1, "rU"), "fastq")
+        read1 = SeqIO.parse(open(args.read1, "r"), "fastq")
+        #read2 = SeqIO.parse(open(args.read2, "rU"), "fastq")
+        read2 = SeqIO.parse(open(args.read2, "r"), "fastq")
 
     r1_output = open('{}_barcode_R1.fastq'.format(args.outfile), "w")
     r2_output = open('{}_barcode_R2.fastq'.format(args.outfile), "w")
