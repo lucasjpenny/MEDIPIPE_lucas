@@ -746,6 +746,62 @@ rule MDS_summary:
 
 
 #####################################
-# Coverage
+# Binned Fragment length
 #####################################
 
+rule bin_fragments_by_midpoint:
+    input:
+        bam=get_dedup_bam_virus,
+        # bin_bed=get_binned_bed_genotype(wildcards.sample)
+        bin_bed=  "/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/HPV16_binned.bed"
+    output:
+        # binned_dir="binned_bams_virus/{sample}.csv",
+        midpoint_file="binned_bams_virus/{sample}_midpoints.bed",
+        # insert_metrics="binned_bams_virus/{sample}_insert_metrics.txt",
+    log:
+        "logs/{sample}_bin_fragments.log"
+    shell:
+        """
+        set -euo pipefail
+
+        module load samtools bedtools R picard
+
+        SORTED_BAM=$(mktemp)
+
+        # 1. Sort by name for proper pair handling
+        samtools sort -n -o "$SORTED_BAM" "{input.bam}"
+
+        # 2. Compute fragment midpoints
+        bedtools bamtobed -bedpe -i "$SORTED_BAM" | \
+        awk 'BEGIN{{OFS="\t"}} $1==$4 {{ mid=int(($2+$6)/2); print $1, mid, mid+1, $7 }}' > {output.midpoint_file}
+
+
+        # 3. Loop through bins
+        # SAMPLE="{wildcards.sample}"
+
+        while read -r chr start end binID; do
+
+        bedtools intersect -a {output.midpoint_file} \
+                            -b <(printf "%s\t%s\t%s\n" "$chr" "$start" "$end") \
+                            -wa | cut -f4 | sort -u > "binned_bams_virus/{wildcards.sample}_$binID.reads.txt"
+
+        samtools view -b -N "binned_bams_virus/{wildcards.sample}_$binID.reads.txt" "{input.bam}" \
+            | samtools sort -o "binned_bams_virus/{wildcards.sample}_$binID.bam"
+
+        samtools index "binned_bams_virus/{wildcards.sample}_$binID.bam"
+        done < "{input.bin_bed}"
+
+
+        for filename in binned_bams_virus/{wildcards.sample}_*.bam; do
+        base=$(basename "$filename" .bam)
+
+        java -jar /cluster/tools/software/picard/2.10.9/picard.jar \
+            CollectInsertSizeMetrics \
+            I="$filename" \
+            O="binned_bams_virus/$base"_insert_metrics.txt \
+            H="binned_bams_virus/$base"_insert_histogram.pdf \
+            M=0.01
+        done
+
+              
+        """
