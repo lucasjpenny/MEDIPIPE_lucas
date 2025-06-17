@@ -74,10 +74,12 @@ def get_rule_all_input():
     frag_agg =  expand("fragment_size/fragment_length_summary.csv"),
     frag_agg_virus =  expand("fragment_size_virus/fragment_length_summary.csv"),
     end_motif_summary = expand("end_motif/MDS_scores.txt"),
+    coverage = expand("HPV_coverage/{samples}_depths.txt", samples = SAMPLES["sample_id"]),
+    coverage_filtered = expand("HPV_coverage/{samples}_above150bp_depths.txt",samples = SAMPLES["sample_id"]),
     # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = SAMPLES["sample_id"]),
     # shift_dedup = expand("dedup_bam_umi_pe_shifted/{samples}_dedup.bam", samples = get_sample_ids_from_checkpoint()),
 
-    return   frag_agg_virus + end_motif_summary#+ fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
+    return   frag_agg_virus + coverage + coverage_filtered + end_motif_summary # + fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr

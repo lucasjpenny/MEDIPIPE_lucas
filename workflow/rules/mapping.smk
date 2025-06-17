@@ -189,42 +189,42 @@ rule virus_bwa_map:
         "samtools view -Sb --threads {threads} - | samtools sort - > {output} && "
         "samtools index {output}) 2> {log}"
 
+# NO LONGER WILL USE
+# rule virus_bwa_map_shifted:
+#     input:
+#         "raw_bam_virus/{sample}.bam",
+#     output:
+#         # temp("raw_bam/{sample}.bam")
+#         discarded = temp("raw_bam_shifted/{sample}_discarded.bam"),
+#         read_names = temp("raw_bam_shifted/{sample}_read_names.txt"),
+#         temp1 = temp("raw_bam_shifted/{sample}_temp1.bam"),
+#         kept = temp("raw_bam_shifted/{sample}_kept.bam"),
+#         shifted = temp("raw_bam_shifted/{sample}_shifted.bam")
+#     params:
+#         # now these live under params, not input
+#         genotype_dir_shifted = lambda wc: get_sample_hpv_genotype_shifted(wc.sample),
+#         genotype_region         = lambda wc: get_sample_hpv_info_shifted(wc.sample)
+#     threads: 12
+#     log:
+#         "logs/{sample}_bwa_map_shifted.log"
+#     shell:
+#         """
+#         # Get all read names that overlap the region
+#         samtools view {input} "{params.genotype_region}" | awk '{{print $1}}' | sort | uniq > {output.read_names}
 
-rule virus_bwa_map_shifted:
-    input:
-        "raw_bam_virus/{sample}.bam",
-    output:
-        # temp("raw_bam/{sample}.bam")
-        discarded = temp("raw_bam_shifted/{sample}_discarded.bam"),
-        read_names = temp("raw_bam_shifted/{sample}_read_names.txt"),
-        temp1 = temp("raw_bam_shifted/{sample}_temp1.bam"),
-        kept = temp("raw_bam_shifted/{sample}_kept.bam"),
-        shifted = temp("raw_bam_shifted/{sample}_shifted.bam")
-    params:
-        # now these live under params, not input
-        genotype_dir_shifted = lambda wc: get_sample_hpv_genotype_shifted(wc.sample),
-        genotype_region         = lambda wc: get_sample_hpv_info_shifted(wc.sample)
-    threads: 12
-    log:
-        "logs/{sample}_bwa_map_shifted.log"
-    shell:
-        """
-        # Get all read names that overlap the region
-        samtools view {input} "{params.genotype_region}" | awk '{{print $1}}' | sort | uniq > {output.read_names}
+#         # Extract both reads in each pair
+#         samtools view -N {output.read_names} -b -h {input} -o {output.temp1}
 
-        # Extract both reads in each pair
-        samtools view -N {output.read_names} -b -h {input} -o {output.temp1}
+#         # Separate kept and discarded reads
+#         samtools view -N {output.read_names} -b {input} -U {output.discarded} -o {output.kept}
 
-        # Separate kept and discarded reads
-        samtools view -N {output.read_names} -b {input} -U {output.discarded} -o {output.kept}
+#         # bam to fastq conversion then bwa mem with the shifted genome
+#         samtools collate -O {output.discarded} | samtools bam2fq - |
+#         bwa mem -M -p -t {threads} {params.genotype_dir_shifted} - |
+#         samtools view -b -f 2 -F 2828 --threads {threads} - | 
+#         samtools view -Sb --threads {threads} - > {output.shifted}
 
-        # bam to fastq conversion then bwa mem with the shifted genome
-        samtools collate -O {output.discarded} | samtools bam2fq - |
-        bwa mem -M -p -t {threads} {params.genotype_dir_shifted} - |
-        samtools view -b -f 2 -F 2828 --threads {threads} - | 
-        samtools view -Sb --threads {threads} - > {output.shifted}
-
-        """
+#         """
     
 
         
@@ -256,15 +256,15 @@ rule samtools_sort_index_stats:
         "samtools stats -@ {threads} {output[0]} > {output[1]}"
 
 
-rule samtools_sort_index_stats_virus_kept:
+rule samtools_sort_index_stats_virus:
     input:
-        "raw_bam_shifted/{sample}_kept.bam"
+        "raw_bam_virus/{sample}.bam"
     output:
         #temp(bam = "raw_bam/{sample}_sorted.bam"), doesn't work
         #bai = "raw_bam/{sample}_sorted.bam.bai",
         #stat= "raw_bam/{sample}_sorted.bam.stats.txt"
-        "raw_bam_shifted/kept_{sample}_sorted.bam",
-        "raw_bam_shifted/kept_{sample}_sorted.bam.stats.txt"
+        "raw_bam_virus/kept_{sample}_sorted.bam",
+        "raw_bam_virus/kept_{sample}_sorted.bam.stats.txt"
     threads: 12
     shell:
         ## --threads flag failed
@@ -279,28 +279,28 @@ rule samtools_sort_index_stats_virus_kept:
         "samtools stats -@ {threads} {output[0]} > {output[1]})"
 
 
-rule samtools_sort_index_stats_shifted:
-    input:
-        "raw_bam_shifted/{sample}_shifted.bam"
-    output:
-        #temp(bam = "raw_bam/{sample}_sorted.bam"), doesn't work
-        #bai = "raw_bam/{sample}_sorted.bam.bai",
-        #stat= "raw_bam/{sample}_sorted.bam.stats.txt"
-        "raw_bam_shifted/{sample}_sorted.bam",
-        "raw_bam_shifted/{sample}_sorted.bam.stats.txt"
-    threads: 12
-    shell:
-        ## --threads flag failed
-        # "(samtools sort -n -@ {threads} -o - {input} |"
-        # "samtools fixmate - - | "
-        # "samtools sort  -@ {threads} -o {output[0]} && "
-        # "samtools index -@ {threads} {output[0]} && "
-        # "samtools stats -@ {threads} {output[0]} > {output[1]})"
-        "(samtools sort -n -@ {threads} -o - {input} |"
-        "samtools fixmate - - | "
-        "samtools sort  -@ {threads} -o {output[0]} && "
-        "samtools index -@ {threads} {output[0]} && "
-        "samtools stats -@ {threads} {output[0]} > {output[1]})"
+# rule samtools_sort_index_stats_shifted:
+#     input:
+#         "raw_bam_shifted/{sample}_shifted.bam"
+#     output:
+#         #temp(bam = "raw_bam/{sample}_sorted.bam"), doesn't work
+#         #bai = "raw_bam/{sample}_sorted.bam.bai",
+#         #stat= "raw_bam/{sample}_sorted.bam.stats.txt"
+#         "raw_bam_shifted/{sample}_sorted.bam",
+#         "raw_bam_shifted/{sample}_sorted.bam.stats.txt"
+#     threads: 12
+#     shell:
+#         ## --threads flag failed
+#         # "(samtools sort -n -@ {threads} -o - {input} |"
+#         # "samtools fixmate - - | "
+#         # "samtools sort  -@ {threads} -o {output[0]} && "
+#         # "samtools index -@ {threads} {output[0]} && "
+#         # "samtools stats -@ {threads} {output[0]} > {output[1]})"
+#         "(samtools sort -n -@ {threads} -o - {input} |"
+#         "samtools fixmate - - | "
+#         "samtools sort  -@ {threads} -o {output[0]} && "
+#         "samtools index -@ {threads} {output[0]} && "
+#         "samtools stats -@ {threads} {output[0]} > {output[1]})"
 
 
 
@@ -334,37 +334,37 @@ rule create_ini_file:
         c_output = cc_data
         """
 
-rule create_ini_file_shifted:
-    input:
-        "raw_bam_shifted/{sample}_sorted.bam"
-    params:
-        samplename = "{sample}"
-    output:
-        ini_file = "cc_ini/{sample}_shifted.ini"
-    shell:
-        """
-        cat <<EOF > {output.ini_file}
-        [fastq2bam]
-        fastq1 = skip
-        fastq2 = skip
-        output = skip
-        name = {params.samplename}
-        bwa = /cluster/tools/software/bwa/0.7.15/bwa
-        ref = bwa_ref
-        samtools = /cluster/tools/software/rocky9/samtools/1.20/bin/samtools
-        bpattern = NNT
-        [consensus]
-        bam = {input}
-        c_output = cc_data_shifted
-        """
+# rule create_ini_file_shifted:
+#     input:
+#         "raw_bam_shifted/{sample}_sorted.bam"
+#     params:
+#         samplename = "{sample}"
+#     output:
+#         ini_file = "cc_ini/{sample}_shifted.ini"
+#     shell:
+#         """
+#         cat <<EOF > {output.ini_file}
+#         [fastq2bam]
+#         fastq1 = skip
+#         fastq2 = skip
+#         output = skip
+#         name = {params.samplename}
+#         bwa = /cluster/tools/software/bwa/0.7.15/bwa
+#         ref = bwa_ref
+#         samtools = /cluster/tools/software/rocky9/samtools/1.20/bin/samtools
+#         bpattern = NNT
+#         [consensus]
+#         bam = {input}
+#         c_output = cc_data_shifted
+#         """
 
-rule create_ini_file_kept:
+rule create_ini_file_virus:
     input:
-        "raw_bam_shifted/kept_{sample}_sorted.bam"
+        "raw_bam_virus/kept_{sample}_sorted.bam"
     params:
         samplename = "kept_{sample}"
     output:
-        ini_file = "cc_ini/{sample}_kept_shifted.ini"
+        ini_file = "cc_ini/{sample}_virus.ini"
     shell:
         """
         cat <<EOF > {output.ini_file}
@@ -379,7 +379,7 @@ rule create_ini_file_kept:
         bpattern = NNT
         [consensus]
         bam = {input}
-        c_output = cc_data_kept
+        c_output = cc_data_virus
         """
 
 
@@ -394,25 +394,25 @@ rule run_consensus_cruncher:
         python3 {config[cc_run_hg]} -c {input.ini_file} consensus
         """
 
-rule run_consensus_cruncher_kept:
+rule run_consensus_cruncher_virus:
     input:
-        ini_file = "cc_ini/{sample}_kept_shifted.ini"
+        ini_file = "cc_ini/{sample}_virus.ini"
     output:
-        consensus_output = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
+        consensus_output = "cc_data_virus/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
     shell:
         """
         python3 {config[cc_run_hpv]} -c {input.ini_file} consensus -b False
         """
 
-rule run_consensus_cruncher_shifted:
-    input:
-        ini_file = "cc_ini/{sample}_shifted.ini"
-    output:
-        consensus_output = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
-    shell:
-        """
-        python3 {config[cc_run_hpv]} -c {input.ini_file} consensus -b False
-        """
+# rule run_consensus_cruncher_shifted:
+#     input:
+#         ini_file = "cc_ini/{sample}_shifted.ini"
+#     output:
+#         consensus_output = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam"  # Update this as per your actual output file(s) or directory
+#     shell:
+#         """
+#         python3 {config[cc_run_hpv]} -c {input.ini_file} consensus -b False
+#         """
 
 rule get_dedup_bam_from_cc:
     input:
@@ -428,17 +428,15 @@ rule get_dedup_bam_from_cc:
 
 rule get_dedup_bam_from_cc_virus:
     input:
-        file = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam",
-        file_kept = "cc_data_kept/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
+        #file = "cc_data_shifted/{sample}_sorted/dcs_sc/{sample}_sorted.all.unique.dcs.sorted.bam",
+        file = "cc_data_virus/kept_{sample}_sorted/dcs_sc/kept_{sample}_sorted.all.unique.dcs.sorted.bam"
     output:
         dedup_bam = "dedup_bam_umi_pe_shifted/{sample}_dedup.bam",
         #dedup_bam_unsorted = temp("dedup_bam_umi_pe_shifted/{sample}_dedup_unsorted.bam")
     shell:
         """ 
-        samtools merge -f - {input.file} {input.file_kept} | \
-        samtools view -b -f 2 -F 2828 - | \
-        samtools sort -o {output.dedup_bam} - && \
-        samtools index {output.dedup_bam}
+        cp {input.file} {output.dedup_bam}
+        cp {input.file}.bai {output.dedup_bam}.bai
         """
 
 ## 20240420 
@@ -587,6 +585,78 @@ rule create_metrics_summary_virus:
 
 
 
+######################################
+# COVERAGE
+#######################################
+
+rule coverage_virus:
+    input:
+        #"dedup_bam_pe/{sample}_dedup.bam"
+        get_dedup_bam_virus
+    output:
+        "HPV_coverage/{sample}_depths.txt",
+    log:
+        "logs/{sample}_samtools_depth.log"
+    shell:
+        """
+        samtools depth -d 100000 {input} > {output}  
+        """
+
+
+
+########################
+# DRAFT
+##########################
+
+rule filter_fragments_by_tlen:
+    input:
+        bam=get_dedup_bam_virus
+    output:
+        below150="filtered_bams/{sample}_below150bp.bam",
+        above150="filtered_bams/{sample}_above150bp.bam",
+        below150_index="filtered_bams/{sample}_below150bp.bam.bai",
+        above150_index="filtered_bams/{sample}_above150bp.bam.bai"
+    log:
+        "logs/{sample}_filter_fragments.log"
+    shell:
+        r"""
+        set -euo pipefail
+        samtools view -h -f 2 {input.bam} | \
+        awk 'BEGIN {{OFS="\t"}} 
+             /^@/ {{print > "header.tmp"; next}} 
+             ($9 <= -100 && $9 >= -150) || ($9 >= 100 && $9 <= 150) {{print > "below.tmp"}} 
+             ($9 <= -151 && $9 >= -220) || ($9 >= 151 && $9 <= 220) {{print > "above.tmp"}}'
+
+        cat header.tmp below.tmp | samtools view -b -o {output.below150}
+        cat header.tmp above.tmp | samtools view -b -o {output.above150}
+
+        rm header.tmp below.tmp above.tmp
+
+        samtools index {output.below150}
+        samtools index {output.above150}
+        """
+
+
+rule coverage_by_fragment_length:
+    input:
+        below150="filtered_bams/{sample}_below150bp.bam",
+        above150="filtered_bams/{sample}_above150bp.bam"
+    output:
+        below150_depth="HPV_coverage/{sample}_below150bp_depths.txt",
+        above150_depth="HPV_coverage/{sample}_above150bp_depths.txt"
+    log:
+        below150_log="logs/{sample}_below150bp_depth.log",
+        above150_log="logs/{sample}_above150bp_depth.log"
+    shell:
+        r"""
+        samtools depth -d 100000 {input.below150} > {output.below150_depth} 2> {log.below150_log}
+        samtools depth -d 100000 {input.above150} > {output.above150_depth} 2> {log.above150_log}
+        """
+
+
+
+
+
 ##################################
 # END MOTIF
 #####################################
@@ -659,7 +729,7 @@ rule run_rscript_motif_get_contexts:
 
 rule MDS_summary:
     input:
-        expand( "end_motif/{sample}_MDS.txt", sample=SAMPLES["sample_id"])
+        expand( "end_motif/{samples}_MDS.txt", samples=SAMPLES["sample_id"])
     output:
          "end_motif/MDS_scores.txt" 
     resources: cpus=1, mem_mb=1000, time_min=5
