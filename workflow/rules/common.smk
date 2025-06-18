@@ -76,9 +76,10 @@ def get_rule_all_input():
     end_motif_summary = expand("end_motif/MDS_scores.txt"),
     coverage = expand("HPV_coverage/{samples}_depths.txt", samples = SAMPLES["sample_id"]),
     coverage_filtered = expand("HPV_coverage/{samples}_above150bp_depths.txt",samples = SAMPLES["sample_id"]),
-    binned_fragmentomics = expand("binned_bams_virus/{samples}_midpoints.bed",samples = SAMPLES["sample_id"]),
+    binned_fragmentomics = expand("binned_bams_virus/{samples}_binned_fragment_length_summary.csv",samples = SAMPLES["sample_id"]),
 
-    return   frag_agg_virus + coverage + coverage_filtered + binned_fragmentomics#+ end_motif_summary + fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
+
+    return   frag_agg_virus + coverage + coverage_filtered + binned_fragmentomics+ end_motif_summary #+ fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr

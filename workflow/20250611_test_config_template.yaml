@@ -20,7 +20,8 @@ aggregate: False       ## True or False
 samples_aggr: /cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/sample_aggr_template.tsv  ## all samples with group info to be aggregated
 
 ## HPV Genotype Dir
-hpv_dir: /cluster/projects/scottgroup/people/lucas/Reference/bwa_HPVs
+hpv_dir: /cluster/projects/scottgroup/people/lucas/Reference/bwa_HPVs_shifted4100bp
+hpv_bed_dir: /cluster/projects/scottgroup/people/lucas/Reference/bwa_HPVs_bins_50bp
 
 
 ######################

@@ -666,7 +666,7 @@ rule end_motif_prep:
     input:
         sorted_bam =  "dedup_bam_umi_pe_shifted/{sample}_dedup.bam"
     output:
-        bedpe = "end_motif/{sample}.bedpe"
+        bedpe = temp("end_motif/{sample}.bedpe")
     params:
         mapq=30
     resources: cpus=1, mem_mb=1500, time_min=60
@@ -674,7 +674,7 @@ rule end_motif_prep:
         """
         samtools sort -n {input.sorted_bam} -o temp_sorted_{wildcards.sample}.bam
         samtools view -bf 0x2 -q {params.mapq} temp_sorted_{wildcards.sample}.bam | \
-        bedtools bamtobed -i stdin -bedpe > {output.bedpe}
+        bedtools bamtobed -i stdin -bedpe| awk '$7 ~ /pos/' > {output.bedpe}
         rm temp_sorted_{wildcards.sample}.bam
         """
 
@@ -699,8 +699,8 @@ rule compute_endMotif:
         bed3 = "end_motif/{sample}_fasta_3.bed",
         bed5 = "end_motif/{sample}_fasta_5.bed"
     output:
-        fasta_out3 = "end_motif/{sample}_fasta_3_annotated.bed",
-        fasta_out5 = "end_motif/{sample}_fasta_5_annotated.bed"
+        fasta_out3 = temp("end_motif/{sample}_fasta_3_annotated.bed"),
+        fasta_out5 = temp("end_motif/{sample}_fasta_5_annotated.bed")
     params:
         genome_ref = lambda wildcards: get_sample_hpv_genotype(wildcards.sample)
     resources: cpus=1, mem_mb=1500, time_min=60
@@ -732,7 +732,6 @@ rule MDS_summary:
         expand( "end_motif/{samples}_MDS.txt", samples=SAMPLES["sample_id"])
     output:
          "end_motif/MDS_scores.txt" 
-    resources: cpus=1, mem_mb=1000, time_min=5
     shell:
         """
         for file in {input}; do
@@ -741,7 +740,6 @@ rule MDS_summary:
             echo "$sample $value" >> {output}
         done
         """
-
 
 
 
@@ -756,13 +754,15 @@ rule bin_fragments_by_midpoint:
         bin_bed=  "/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/HPV16_binned.bed"
     output:
         # binned_dir="binned_bams_virus/{sample}.csv",
-        midpoint_file="binned_bams_virus/{sample}_midpoints.bed",
-        # insert_metrics="binned_bams_virus/{sample}_insert_metrics.txt",
+        midpoint_file=temp("binned_bams_virus/{sample}_midpoints.bed"),
+        insert_metrics="binned_bams_virus/{sample}_binned_fragment_length_summary.csv",
     log:
         "logs/{sample}_bin_fragments.log"
     shell:
         """
         set -euo pipefail
+
+        mkdir -p binned_bams_virus/{wildcards.sample}
 
         module load samtools bedtools R picard
 
@@ -783,25 +783,53 @@ rule bin_fragments_by_midpoint:
 
         bedtools intersect -a {output.midpoint_file} \
                             -b <(printf "%s\t%s\t%s\n" "$chr" "$start" "$end") \
-                            -wa | cut -f4 | sort -u > "binned_bams_virus/{wildcards.sample}_$binID.reads.txt"
+                            -wa | cut -f4 | sort -u > "binned_bams_virus/{wildcards.sample}/{wildcards.sample}_$binID.reads.txt"
 
-        samtools view -b -N "binned_bams_virus/{wildcards.sample}_$binID.reads.txt" "{input.bam}" \
-            | samtools sort -o "binned_bams_virus/{wildcards.sample}_$binID.bam"
+        samtools view -b -N "binned_bams_virus/{wildcards.sample}/{wildcards.sample}_$binID.reads.txt" "{input.bam}" \
+            | samtools sort -o "binned_bams_virus/{wildcards.sample}/{wildcards.sample}_$binID.bam"
 
-        samtools index "binned_bams_virus/{wildcards.sample}_$binID.bam"
+        samtools index "binned_bams_virus/{wildcards.sample}/{wildcards.sample}_$binID.bam"
         done < "{input.bin_bed}"
 
 
-        for filename in binned_bams_virus/{wildcards.sample}_*.bam; do
+        for filename in binned_bams_virus/{wildcards.sample}/{wildcards.sample}_*.bam; do
         base=$(basename "$filename" .bam)
 
         java -jar /cluster/tools/software/picard/2.10.9/picard.jar \
             CollectInsertSizeMetrics \
             I="$filename" \
-            O="binned_bams_virus/$base"_insert_metrics.txt \
-            H="binned_bams_virus/$base"_insert_histogram.pdf \
+            O="binned_bams_virus/{wildcards.sample}/$base"_insert_metrics.txt \
+            H="binned_bams_virus/{wildcards.sample}/$base"_insert_histogram.pdf \
             M=0.01
         done
 
-              
+
+        # Create the header
+        outfile={output.insert_metrics}
+        echo -n "filename,READ_PAIRS," > $outfile
+        for i in $(seq 0 600); do
+            echo -n "$i," >> $outfile
+        done
+        echo "" >> $outfile
+
+        # Process each metrics file
+        for file in binned_bams_virus/{wildcards.sample}/{wildcards.sample}*_insert_metrics.txt; do
+            # Create an array with 601 zeroes
+            arr=($(for i in $(seq 0 600); do echo -n "0 "; done))
+
+            # Extract the filename
+            filename=$(basename $file)
+
+            # Extract the READ_PAIRS value
+            read_pairs=$(awk '/READ_PAIRS/{{getline; print $7}}' $file)
+
+            # Update the array with the actual data
+            awk -v arr="${{arr[*]}}" -v filename="$filename" -v read_pairs="$read_pairs" \\
+                'BEGIN{{split(arr, a, " ")}}
+                $1 ~ /^[0-9]+$/ && $1 >= 0 && $1 <= 600 {{a[$1+1]=$2}}
+                END{{printf("%s,%s,", filename, read_pairs); for(i=1; i<=601; i++) printf("%s,", a[i]); printf("\\n")}}' $file >> $outfile
+        done
+
+        
+        rm -r binned_bams_virus/{wildcards.sample}
         """

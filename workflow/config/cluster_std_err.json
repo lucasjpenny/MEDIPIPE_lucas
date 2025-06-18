@@ -32,6 +32,12 @@
         "jid": "create_hpviewer_summary",
         "std": "logs_cluster/submit_create_hpviewer_summary_%j.out",
         "err": "logs_cluster/submit_create_hpviewer_summary_%j.err"
+    },
+    "MDS_summary":
+    {
+        "jid": "MDS_summary",
+        "std": "logs_cluster/MDS_summary_%j.out",
+        "err": "logs_cluster/MDS_summary_%j.err"
     }
 }
 
