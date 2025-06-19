@@ -54,8 +54,8 @@ fasta_3$V4 <- unlist(concat)
 fasta_3$V4 <- chartr("ATGC","TACG", fasta_3$V4)
 
 ### Count the motifs
-# fasta <- bind_rows(fasta_5, fasta_3)
-fasta <- bind_rows(fasta_5)
+# fasta <- bind_rows(fasta_5, fasta_3) # I removed this line becuase I'm only dealing with the positive strand in this case... I'll fix later if it's absolutely required 
+fasta <- bind_rows(fasta_5) 
 motif <- as.data.frame(table(fasta$V4))
 motif$frequency <- motif$Freq/sum(motif$Freq)
 colnames(motif) <- c("motif", "count", "frequency")

@@ -176,12 +176,6 @@ def get_bwa_index():
     else:
         return REF.loc["bwa_index"][1]
 
-def get_bwa_fusion_index():
-    if config["spike_in"]:
-        #return REF.loc["bwa_idx_spikein"][1]
-        return config["spike_idx"]
-    else:
-        return REF.loc["fusion_index"][1]
 
 def get_bwa_shifted_index():
     if config["spike_in"]:
@@ -235,13 +229,15 @@ def get_sample_hpv_genotype(sample):
         return ""
 
 
-def get_sample_hpv_genotype_shifted(sample):
-    """sample is just a plain Python string, e.g. "OPC_Pool-1_14_S14_L001"."""
+def get_sample_hpvbed_genotype(sample):
     if config["paired-end"]:
-        genotype = SAMPLES.loc[sample, "HPV_genotype"]
-        return f"{config['hpv_dir']}/{genotype}L1toE1.fasta"
+        genotype = SAMPLES.loc[sample]["HPV_genotype"]
+        return f"{config['hpv_bed_dir']}/{genotype}.bed"
     else:
         return ""
+
+
+
 
 
 

@@ -33,11 +33,11 @@ bedpe <- read.delim(bedpe_file, header = FALSE)
 # chrs <- paste0("chr", c(1:22, "X", "Y"))
 # bedpe <- bedpe[bedpe$V1 %in% chrs, ]
 # bedpe <- bedpe[bedpe$V1 == bedpe$V4, ] #testing, need to uncomment after this 
-bedpe <- bedpe[!(bedpe$V10 == "+"), ] #bedpe <- bedpe[!(bedpe$V10 == "-"), ]
+# bedpe <- bedpe[!(bedpe$V10 == "+"), ] #bedpe <- bedpe[!(bedpe$V10 == "-"), ]
 
-## Fragments less than 600bp
+## Fragments between 100-200bp
 bedpe$length <- bedpe$V6 - bedpe$V2
-bedpe <- bedpe[bedpe$length <= 1000, ]
+bedpe <- bedpe[bedpe$length >= 100 & bedpe$length <= 200, ]
 
 ## Get fragment starts and ends
 bedpe <- bedpe[, c("V1", "V2", "V6")]

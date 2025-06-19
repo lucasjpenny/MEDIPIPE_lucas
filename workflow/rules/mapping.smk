@@ -727,19 +727,82 @@ rule run_rscript_motif_get_contexts:
         "--outdir end_motif"
 
 
+# rule MDS_summary:
+#     input:
+#         expand( "end_motif/{samples}_MDS.txt", samples=SAMPLES["sample_id"])
+#     output:
+#          "end_motif/MDS_scores.txt" 
+#     shell:
+#         """
+#         for file in {input}; do
+#             sample=$(basename $file _MDS.txt)
+#             value=$(sed -n '2p' $file)
+#             echo "$sample $value" >> {output}
+#         done
+#         """
+
 rule MDS_summary:
     input:
-        expand( "end_motif/{samples}_MDS.txt", samples=SAMPLES["sample_id"])
+        mds=expand("end_motif/{samples}_MDS.txt", samples=SAMPLES["sample_id"]),
+        raw=expand("end_motif/{samples}_raw.txt", samples=SAMPLES["sample_id"])
     output:
-         "end_motif/MDS_scores.txt" 
+        mds_scores="end_motif/MDS_scores.txt",
+        raw_scores="end_motif/raw_scores.txt"
     shell:
         """
-        for file in {input}; do
+        # -----------------------------
+        # MDS summary file
+        # -----------------------------
+        > {output.mds_scores}
+        for file in {input.mds}; do
             sample=$(basename $file _MDS.txt)
             value=$(sed -n '2p' $file)
-            echo "$sample $value" >> {output}
+            echo "$sample $value" >> {output.mds_scores}
+        done
+
+        # -----------------------------
+        # Raw motif matrix (as TSV)
+        # -----------------------------
+        motifs=()
+        for a in A C G T; do
+          for b in A C G T; do
+            for c in A C G T; do
+              for d in A C G T; do
+                motifs+=("$a$b$c$d")
+              done
+            done
+          done
+        done
+
+        # Write header
+        {{
+          echo -n "patient"
+          for motif in "${{motifs[@]}}"; do
+            echo -ne "\\t$motif"
+          done
+          echo ""
+        }} > {output.raw_scores}
+
+        # Read *_raw.txt and write counts
+        for file in {input.raw}; do
+          sample=$(basename "$file" _raw.txt)
+          declare -A counts
+          while IFS=$'\\t' read -r motif count; do
+            motif=${{motif//\\"/}}
+            count=${{count//\\"/}}
+            counts["$motif"]=$count
+          done < <(tail -n +2 "$file")
+
+          {{
+            echo -n "$sample"
+            for motif in "${{motifs[@]}}"; do
+              echo -ne "\\t${{counts[$motif]:-0}}"
+            done
+            echo ""
+          }} >> {output.raw_scores}
         done
         """
+
 
 
 
@@ -751,7 +814,7 @@ rule bin_fragments_by_midpoint:
     input:
         bam=get_dedup_bam_virus,
         # bin_bed=get_binned_bed_genotype(wildcards.sample)
-        bin_bed=  "/cluster/home/t116306uhn/workflows/MEDIPIPE_lucas/workflow/HPV16_binned.bed"
+        bin_bed= lambda wildcards: get_sample_hpvbed_genotype(wildcards.sample)
     output:
         # binned_dir="binned_bams_virus/{sample}.csv",
         midpoint_file=temp("binned_bams_virus/{sample}_midpoints.bed"),

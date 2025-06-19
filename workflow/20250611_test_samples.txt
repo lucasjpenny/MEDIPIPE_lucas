@@ -1,3 +1,4 @@
 sample_id	R1	R2	HPV_genotype
-OPC_Pool-1_37_S37_L001	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_37_S37_L001_R1_001.fastq.gz	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_37_S37_L001_R2_001.fastq.gz	HPV16
-OPC_Pool-1_14_S14	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_14_S14_L001_R1_001.fastq.gz	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_14_S14_L001_R2_001.fastq.gz	HPV16
+OPC_Pool-1_37_S37_L001	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_37_S37_L001_R1_first100k.fastq.gz	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_37_S37_L001_R2_first100k.fastq.gz	HPV16
+OPC_Pool-1_14_S14	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_14_S14_L001_R1_first100k.fastq.gz	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_14_S14_L001_R2_first100k.fastq.gz	HPV16
+OPC_Pool-1_34_S34	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_34_S34_L001_R1_first100k.fastq.gz	/cluster/projects/scottgroup/people/lucas/hpvseq_downsample_testingSnakemake/OPC_Pool-1_34_S34_L001_R2_first100k.fastq.gz	HPV18

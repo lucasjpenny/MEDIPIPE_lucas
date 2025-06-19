@@ -18,10 +18,10 @@ rule merge_and_rename_fq_pe:
         R1 = get_raw_fastq_pe_R1,
         R2 = get_raw_fastq_pe_R2,
     output:
-        "renamed_fq/{sample}_R1.fastq.gz",
-        "renamed_fq/{sample}_R2.fastq.gz",
-        # temp("renamed_fq/{sample}_R1.fastq.gz"),
-        # temp("renamed_fq/{sample}_R2.fastq.gz"),
+        # "renamed_fq/{sample}_R1.fastq.gz",
+        # "renamed_fq/{sample}_R2.fastq.gz",
+        temp("renamed_fq/{sample}_R1.fastq.gz"),
+        temp("renamed_fq/{sample}_R2.fastq.gz"),
     shell:
         "cat {input.R1} > {output[0]} && "
         "cat {input.R2} > {output[1]} "
@@ -36,14 +36,14 @@ rule extract_barcode:
     input:
         get_renamed_fastq
     output:
-        # file1 = temp("barcoded_fq_pe/{sample}_unzip_R1.fastq"),
-        # file2 = temp("barcoded_fq_pe/{sample}_unzip_R2.fastq"),
-        # file3 = temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
-        # file4 = temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
-        file1 = "barcoded_fq_pe/{sample}_unzip_R1.fastq",
-        file2 = "barcoded_fq_pe/{sample}_unzip_R2.fastq",
-        file3 = "barcoded_fq_pe/{sample}_R1.fastq.gz",
-        file4 = "barcoded_fq_pe/{sample}_R2.fastq.gz",
+        file1 = temp("barcoded_fq_pe/{sample}_unzip_R1.fastq"),
+        file2 = temp("barcoded_fq_pe/{sample}_unzip_R2.fastq"),
+        file3 = temp("barcoded_fq_pe/{sample}_R1.fastq.gz"),
+        file4 = temp("barcoded_fq_pe/{sample}_R2.fastq.gz"),
+        # file1 = "barcoded_fq_pe/{sample}_unzip_R1.fastq",
+        # file2 = "barcoded_fq_pe/{sample}_unzip_R2.fastq",
+        # file3 = "barcoded_fq_pe/{sample}_R1.fastq.gz",
+        # file4 = "barcoded_fq_pe/{sample}_R2.fastq.gz",
     params:
         outfile = "barcoded_fq_pe/{sample}"          
     shell:
@@ -119,10 +119,10 @@ rule trim_galore_pe:
     input:
         get_fastq_4trim
     output:
-        "trimmed_fq/{sample}_R1_val_1.fq.gz", #SHOULD BE temp
-        "trimmed_fq/{sample}_R2_val_2.fq.gz", #SHOULD BE temp
-        # temp("trimmed_fq/{sample}_R1_val_1.fq.gz"), #SHOULD BE temp
-        # temp("trimmed_fq/{sample}_R2_val_2.fq.gz"), #SHOULD BE temp
+        # "trimmed_fq/{sample}_R1_val_1.fq.gz", #SHOULD BE temp
+        # "trimmed_fq/{sample}_R2_val_2.fq.gz", #SHOULD BE temp
+        temp("trimmed_fq/{sample}_R1_val_1.fq.gz"), #SHOULD BE temp
+        temp("trimmed_fq/{sample}_R2_val_2.fq.gz"), #SHOULD BE temp
         "trimmed_fq/{sample}_R1.fastq.gz_trimming_report.txt",
         "trimmed_fq/{sample}_R2.fastq.gz_trimming_report.txt",
     params:
