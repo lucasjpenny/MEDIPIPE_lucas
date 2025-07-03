@@ -7,7 +7,11 @@
     {
         "jid": "{rule}_{wildcards.sample}",
         "std": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.out",
-        "err": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.err"
+        "err": "logs_cluster/submit_{rule}_{wildcards.sample}_%j.err",
+        "time": "12:00:00",
+        "mem": "60G",
+        "cpus": "12",
+        "partition": "himem"
     },
     "create_metrics_summary":
     {
@@ -38,6 +42,33 @@
         "jid": "MDS_summary",
         "std": "logs_cluster/MDS_summary_%j.out",
         "err": "logs_cluster/MDS_summary_%j.err"
+    },
+    "extract_barcode": {
+        "jid": "extract_barcode",
+        "std": "logs_cluster/submit_extract_barcode_%j.out",
+        "err": "logs_cluster/submit_extract_barcode_%j.err",
+        "time": "24:00:00",
+        "mem": "60G",
+        "cpus": "16",
+        "partition": "himem"
+    },
+    "run_consensus_cruncher": {
+        "jid": "run_consensus_cruncher",
+        "std": "logs_cluster/submit_run_consensus_cruncher_%j.out",
+        "err": "logs_cluster/submit_run_consensus_cruncher_%j.err",
+        "time": "24:00:00",
+        "mem": "120G",
+        "cpus": "16",
+        "partition": "veryhimem"
+    },
+    "run_consensus_cruncher_virus": {
+        "jid": "run_consensus_cruncher_virus",
+        "std": "logs_cluster/submit_run_consensus_cruncher_virus_%j.out",
+        "err": "logs_cluster/submit_run_consensus_cruncher_virus_%j.err",
+        "time": "24:00:00",
+        "mem": "180G",
+        "cpus": "16",
+        "partition": "veryhimem"
     }
 }
 

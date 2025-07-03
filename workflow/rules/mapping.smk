@@ -620,7 +620,6 @@ rule filter_fragments_by_tlen:
         "logs/{sample}_filter_fragments.log"
     shell:
         r"""
-        set -euo pipefail
         samtools view -h -f 2 {input.bam} | \
         awk 'BEGIN {{OFS="\t"}} 
              /^@/ {{print > "header.tmp"; next}} 

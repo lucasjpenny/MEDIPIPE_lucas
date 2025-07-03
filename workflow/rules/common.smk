@@ -79,7 +79,7 @@ def get_rule_all_input():
     binned_fragmentomics = expand("binned_bams_virus/{samples}_binned_fragment_length_summary.csv",samples = SAMPLES["sample_id"]),
 
 
-    return   frag_agg_virus + coverage + coverage_filtered + binned_fragmentomics+ end_motif_summary #+ fq_qc + frag_size + frag_agg  # + hpv_viewer_repeatmasker
+    return   frag_agg_virus + coverage +  binned_fragmentomics+ end_motif_summary + fq_qc + frag_agg # coverage_filtered + frag_size + frag_agg  # + hpv_viewer_repeatmasker
     ###################################
     ######################################
     ## aggregated outputs for SAMPLES_aggr
